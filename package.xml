@@ -1,0 +1,48 @@
+<?xml version="1.0"?>
+<package>
+  <name>Interface</name>
+  <version>0.0.0</version>
+  <description>This package contains the codes to interface with Baxte research robot, kinect V2 and a mocap remote to control evart software.</description>
+
+  <maintainer email="buntyke@gmail.com">tomlab</maintainer>
+
+  <license>MIT</license>
+
+  <url type="website">https://github.com/ShibataLab/Interface.git</url>
+
+  <author email="buntyke@gmail.com">Nishanth Koganti</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>rospy</build_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>rosbag</build_depend>
+  <build_depend>rostime</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>cv_bridge</build_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <build_depend>libpcl-all-dev</build_depend>
+  <build_depend>kinect2_bridge</build_depend>
+  <build_depend>image_transport</build_depend>
+  <build_depend>message_filters</build_depend>
+  <build_depend>compressed_image_transport</build_depend>
+  <build_depend>compressed_depth_image_transport</build_depend>
+
+  <run_depend>rospy</run_depend>
+  <run_depend>roscpp</run_depend>
+  <run_depend>rosbag</run_depend>
+  <run_depend>rostime</run_depend>
+  <run_depend>std_msgs</run_depend>
+  <run_depend>cv_bridge</run_depend>
+  <run_depend>libpcl-all</run_depend>
+  <run_depend>sensor_msgs</run_depend>
+  <run_depend>libpcl-all-dev</run_depend>
+  <run_depend>message_runtime</run_depend>
+  <run_depend>message_filters</run_depend>
+  <run_depend>image_transport</run_depend>
+  <run_depend>compressed_image_transport</run_depend>
+  <run_depend>compressed_depth_image_transport</run_depend>
+
+  <export></export>
+
+</package>
