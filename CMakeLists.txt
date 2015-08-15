@@ -19,7 +19,7 @@ ELSE()
   MESSAGE(ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
 ENDIF()
 
-find_package(catkin REQUIRED COMPONENTS roscpp rostime rosbag std_msgs sensor_msgs message_filters cv_bridge image_transport compressed_image_transport compressed_depth_image_transport kinect2_bridge)
+find_package(catkin REQUIRED COMPONENTS roscpp rostime rosbag std_msgs sensor_msgs message_filters cv_bridge image_transport compressed_image_transport compressed_depth_image_transport kinect2_bridge ar_track_alvar_msgs)
 find_package(PCL REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(OpenMP REQUIRED)
@@ -47,6 +47,9 @@ target_link_libraries(cloth_recorder ${PCL_LIBRARIES} ${catkin_LIBRARIES} ${Open
 
 add_executable(kinect_recorder nodes/kinect_recorder.cpp src/recorder.cpp)
 target_link_libraries(kinect_recorder ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} -lzmq)
+
+add_executable(marker_recorder nodes/marker_recorder.cpp)
+target_link_libraries(marker_recorder ${catkin_LIBRARIES})
 
 add_executable(synchronizer nodes/synchronizer.cpp)
 target_link_libraries(synchronizer -lzmq)
