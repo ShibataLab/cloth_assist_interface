@@ -153,7 +153,7 @@ int main(int argc, char **argv)
     spinner.start();
 
     std::cout << "Stop recording? Y" << std::endl;
-    cin >> Message;
+    std::cin >> Message;
 
     // stop recording and close fstream
     spinner.stop();

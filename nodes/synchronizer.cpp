@@ -15,7 +15,6 @@ int main(int argc, char** argv)
 	// ZeroMQ Initialization
 	char c;
 	string Message;
-	bool delay = true;
 
 	//  Prepare our context and socket
 	context_t context(1);
