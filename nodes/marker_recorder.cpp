@@ -4,6 +4,7 @@
 
 #include <zmq.hpp>
 #include <fstream>
+#include <cstdlib>
 #include <iostream>
 #include <ros/ros.h>
 #include <ros/spinner.h>
@@ -54,85 +55,110 @@ int main(int argc, char **argv)
   // URL:http://wiki.ros.org/roscpp/Overview/Callbacks%20and%20Spinning#Multi-threaded_Spinning
   ros::AsyncSpinner spinner(0);
 
-  // zeromq Initialization
-  zmq::context_t context(1);
-  std::string Message, fileName;
-  zmq::socket_t kinectSocket(context, ZMQ_PAIR);
+  if (argc == 1)
+  {
+    // zeromq Initialization
+    zmq::context_t context(1);
+    std::string Message, fileName;
+    zmq::socket_t kinectSocket(context, ZMQ_PAIR);
 
-  // create server
-  kinectSocket.bind("tcp://*:5555");
-  std::cout << "[ZMQ] Created kinect server" << std::endl;
+    // create server
+    kinectSocket.bind("tcp://*:5555");
+    std::cout << "[ZMQ] Created kinect server" << std::endl;
 
-  while (1)
-  	{
-  		// Get the file name
-  		zmq::message_t request;
-  		kinectSocket.recv(&request);
-  		Message = std::string(static_cast<char *>(request.data()), request.size());
+    while (1)
+    	{
+    		// Get the file name
+    		zmq::message_t request;
+    		kinectSocket.recv(&request);
+    		Message = std::string(static_cast<char *>(request.data()), request.size());
 
-      if (Message == "StopServer")
-  		{
-  			std::cout << "[ZMQ] Received Stop Server" << std::endl;
-  			break;
-  		}
+        if (Message == "StopServer")
+    		{
+    			std::cout << "[ZMQ] Received Stop Server" << std::endl;
+    			break;
+    		}
 
-      else if (Message == "NewTrial")
-  		{
-  			std::cout << "[ZMQ] Received NewTrial" << std::endl;
+        else if (Message == "NewTrial")
+    		{
+    			std::cout << "[ZMQ] Received NewTrial" << std::endl;
 
-  			// send ready reply
-  			zmq::message_t reply(5);
-  			std::memcpy((void *)reply.data(), "Ready", 5);
-  			kinectSocket.send(reply);
-  			std::cout << "[ZMQ] Sent Ready" << std::endl;
+    			// send ready reply
+    			zmq::message_t reply(5);
+    			std::memcpy((void *)reply.data(), "Ready", 5);
+    			kinectSocket.send(reply);
+    			std::cout << "[ZMQ] Sent Ready" << std::endl;
 
-  			// get kinect filename
-  			zmq::message_t recordName;
-  			kinectSocket.recv(&recordName);
-  			fileName = std::string(static_cast<char *>(recordName.data()), recordName.size());
-  			std::cout << "[ZMQ] Received filename" << std::endl;
+    			// get kinect filename
+    			zmq::message_t recordName;
+    			kinectSocket.recv(&recordName);
+    			fileName = std::string(static_cast<char *>(recordName.data()), recordName.size());
+    			std::cout << "[ZMQ] Received filename" << std::endl;
 
-        // create and initialize file stream and write file header
-        fOut.open(fileName);
-        fOut << "Frame,Time,X,Y,Z" << std::endl;
+          // create and initialize file stream and write file header
+          fOut.open(fileName);
+          fOut << "Frame,Time,X,Y,Z" << std::endl;
+          std::cout << "[FSTREAM] Opened file and written header" << std::endl;
 
-        zmq::message_t startRequest;
-  			kinectSocket.recv(&startRequest);
-  			Message = std::string(static_cast<char *>(startRequest.data()), startRequest.size());
-        if (Message == "StartRecording")
-        {
-          std::cout << "[ZMQ] Received StartRecording" << std::endl;
+          zmq::message_t startRequest;
+    			kinectSocket.recv(&startRequest);
+    			Message = std::string(static_cast<char *>(startRequest.data()), startRequest.size());
+          if (Message == "StartRecording")
+          {
+            std::cout << "[ZMQ] Received StartRecording" << std::endl;
 
-          // initialize frame and time variables
-          begin = ros::Time::now();
+            // initialize frame and time variables
+            begin = ros::Time::now();
 
-          // start recording
-          spinner.start();
+            // start recording
+            spinner.start();
+          }
+    			else
+          {
+            std::cout << "[ZMQ] Invalid message" << std::endl;
+            continue;
+          }
+
+          // Get the file name
+      		zmq::message_t stopRequest;
+      		kinectSocket.recv(&stopRequest);
+      		Message = std::string(static_cast<char *>(stopRequest.data()), stopRequest.size());
+          if (Message == "StopRecording")
+          {
+            std::cout << "[ZMQ] Received StopRecording" << std::endl;
+          }
+    			else
+          {
+            std::cout << "[ZMQ] Invalid message" << std::endl;
+          }
+
+          // stop the spinner
+          spinner.stop();
+          fOut.close();
+
+          std::cout << "[FSTREAM] Closed file and stopped recording" << std::endl;
         }
-  			else
-        {
-          std::cout << "[ZMQ] Invalid message" << std::endl;
-          continue;
-        }
+    	}
+  }
+  else
+  {
+    std::string Message;
 
-        // Get the file name
-    		zmq::message_t stopRequest;
-    		kinectSocket.recv(&stopRequest);
-    		Message = std::string(static_cast<char *>(stopRequest.data()), stopRequest.size());
-        if (Message == "StopRecording")
-        {
-          std::cout << "[ZMQ] Received StopRecording" << std::endl;
-        }
-  			else
-        {
-          std::cout << "[ZMQ] Invalid message" << std::endl;
-        }
+    // create and initialize file stream and write file header
+    fOut.open(argv[1]);
+    fOut << "Frame,Time,X,Y,Z" << std::endl;
 
-        // stop the spinner
-        spinner.stop();
-        fOut.close();
-      }
-  	}
+    // initialize frame and time variables
+    begin = ros::Time::now();
+    spinner.start();
+
+    std::cout << "Stop recording? Y" << std::endl;
+    cin >> Message;
+
+    // stop recording and close fstream
+    spinner.stop();
+    fOut.close();
+  }
 
   // clean shutdown
   ros::shutdown();
