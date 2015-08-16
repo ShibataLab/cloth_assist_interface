@@ -52,10 +52,11 @@ int main(int argc, char **argv)
 
   // AsyncSpinner is used to synchronize multiple threads under the ros framework
   // URL:http://wiki.ros.org/roscpp/Overview/Callbacks%20and%20Spinning#Multi-threaded_Spinning
-  ros::AsyncSpinner spinner;
+  ros::AsyncSpinner spinner(0);
 
   // zeromq Initialization
   zmq::context_t context(1);
+  std::string Message, fileName;
   zmq::socket_t kinectSocket(context, ZMQ_PAIR);
 
   // create server
@@ -92,7 +93,7 @@ int main(int argc, char **argv)
   			std::cout << "[ZMQ] Received filename" << std::endl;
 
         // create and initialize file stream and write file header
-        fOut.open(argv[1]);
+        fOut.open(fileName);
         fOut << "Frame,Time,X,Y,Z" << std::endl;
 
         zmq::message_t startRequest;
