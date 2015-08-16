@@ -1,5 +1,6 @@
 // Headers
 #include <string>
+#include <unistd.h>
 #include <iostream>
 
 // ZeroMQ Header
@@ -14,6 +15,7 @@ int main(int argc, char** argv)
 	// ZeroMQ Initialization
 	char c;
 	string Message;
+	bool delay = true;
 
 	//  Prepare our context and socket
 	context_t context(1);
@@ -93,6 +95,12 @@ int main(int argc, char** argv)
 			memcpy((void *)fileNameKinect.data(), Message.c_str(), Message.length());
 			kinectSocket.send(fileNameKinect);
 			cout << "[ZMQ Kinect] Sent filename" << endl;
+
+			cout << "Start Recording with Delay? Y/N" << endl;
+			cin >> Message;
+
+			if (Message == "Y")
+				sleep(5);
 
 			// Start Recording Request
 			message_t startRequestMocap(14);
