@@ -49,7 +49,7 @@ add_executable(kinect_recorder nodes/kinect_recorder.cpp src/recorder.cpp)
 target_link_libraries(kinect_recorder ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} -lzmq)
 
 add_executable(marker_recorder nodes/marker_recorder.cpp)
-target_link_libraries(marker_recorder ${catkin_LIBRARIES})
+target_link_libraries(marker_recorder ${catkin_LIBRARIES} -lzmq)
 
 add_executable(synchronizer nodes/synchronizer.cpp)
 target_link_libraries(synchronizer -lzmq)
