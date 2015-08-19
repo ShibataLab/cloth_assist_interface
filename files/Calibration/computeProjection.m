@@ -11,14 +11,14 @@ markerSize = 25;
 if mode == 0
     % Kinect Calibration Mode
     [~,kinectData] = parseKinect(fileName);
-    [~,mocapData] = parseOptitrack(sprintf('%s.csv',fileName));
+    [~,mocapData] = parseMocap(sprintf('%s.trc',fileName));
 
     %nMocap = size(mocapData,1);
     nKinect = size(kinectData,1);
     nMarkers = (size(mocapData,2) - 2)/3;
 
    mocapT = mocapData(:,2);
-   kinectT = kinectData(:,2)./1000;
+   kinectT = kinectData(:,2);
    mocapInd = zeros(nKinect,1);
     for j = 1:nKinect
         tRef = kinectT(j);
@@ -54,7 +54,7 @@ if mode == 0
     zlabel('Z [m]', 'FontSize', fontSize, 'FontWeight', 'bold');
     title('Kinect Calibration',  'FontSize', fontSize, 'FontWeight', 'bold');
     set(gca, 'FontSize', fontSize, 'FontWeight', 'bold');
-    axis([-1 1 1 2 -1 1]);
+    axis([-0.1 0.6 -0.1 0.6 1.0 1.8]);
     view([45 45]);
 
     for i = 1:nKinect

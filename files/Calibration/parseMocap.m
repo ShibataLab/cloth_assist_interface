@@ -7,7 +7,14 @@ function [Head, Data] = parseMocap(fileName)
 fid = fopen(fileName);
 
 % Getting the Header
-Head = strsplit(fgets(fid),',');
+fgets(fid);
+fgets(fid);
+fgets(fid);
+fgets(fid);
+Head = strsplit(fgets(fid),'\t');
+Head = circshift(Head,[0,1]);
+Head{1} = 'Frame';
+Head{2} = 'Time';
 
 % Getting the Data
 Data = [];
@@ -16,4 +23,6 @@ while ~feof(fid)
       dat = str2num(line);
       Data = [Data; dat];
 end
+
+Data(:,3:end) = Data(:,3:end)/1000;
 fclose(fid);
