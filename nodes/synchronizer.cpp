@@ -99,30 +99,43 @@ int main(int argc, char** argv)
 			cin >> Message;
 
 			if (Message == "Y")
-				sleep(5);
+				sleep(6);
 
 			// Start Recording Request
 			message_t startRequestMocap(14);
 			memcpy((void *)startRequestMocap.data(), "StartRecording", 14);
 			mocapSocket.send(startRequestMocap);
 			cout << "[ZMQ Mocap] Sent StartRecording" << endl;
+
+			//have a gap of atleast 5 milliseconds
+			usleep(5000);
+			
+			// send kinect message
 			message_t startRequestKinect(14);
 			memcpy((void *)startRequestKinect.data(), "StartRecording", 14);
 			kinectSocket.send(startRequestKinect);
 			cout << "[ZMQ Kinect] Sent StartRecording" << endl;
 
 			// Stop Recording Request
-      cout << "Stop Recording? Y" << endl;
-      cin >> c;
+			message_t kinectSignal;
+			kinectSocket.recv(&kinectSignal);
+
+			Message = string(static_cast<char *>(kinectSignal.data()), kinectSignal.size());
+			if (Message == "StoppedRecording")
+			{
+				cout << "[ZMQ Kinect] Received StoppedRecording" << endl;
+			}
+
+			else
+			{
+				cout << "[ZMQ Kinect] Invalid reply" << endl;
+				continue;
+			}
 
 		  message_t stopRequestMocap(13);
 			memcpy((void *)stopRequestMocap.data(), "StopRecording", 13);
 			mocapSocket.send(stopRequestMocap);
 			cout << "[ZMQ Mocap] Sent StopRecording" << endl;
-			message_t stopRequestKinect(13);
-			memcpy((void *)stopRequestKinect.data(), "StopRecording", 13);
-			kinectSocket.send(stopRequestKinect);
-			cout << "[ZMQ Kinect] Sent StopRecording" << endl;
 		}
 	}
 

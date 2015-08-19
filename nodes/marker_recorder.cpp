@@ -11,7 +11,7 @@
 #include <std_msgs/String.h>
 #include <ar_track_alvar_msgs/AlvarMarkers.h>
 
-int frame = 0;
+int frame;
 ros::Time begin;
 std::ofstream fOut;
 
@@ -49,11 +49,7 @@ int main(int argc, char **argv)
   ros::NodeHandle n;
 
   // subscribe to ros topic
-  ros::Subscriber sub = n.subscribe("ar_pose_marker", 50, callback);
-
-  // AsyncSpinner is used to synchronize multiple threads under the ros framework
-  // URL:http://wiki.ros.org/roscpp/Overview/Callbacks%20and%20Spinning#Multi-threaded_Spinning
-  ros::AsyncSpinner spinner(0);
+  ros::Subscriber sub = n.subscribe("ar_pose_marker", 0, callback);
 
   if (argc == 1)
   {
@@ -108,10 +104,8 @@ int main(int argc, char **argv)
             std::cout << "[ZMQ] Received StartRecording" << std::endl;
 
             // initialize frame and time variables
+            frame = 0;
             begin = ros::Time::now();
-
-            // start recording
-            spinner.start();
           }
     			else
           {
@@ -119,21 +113,21 @@ int main(int argc, char **argv)
             continue;
           }
 
-          // Get the file name
-      		zmq::message_t stopRequest;
-      		kinectSocket.recv(&stopRequest);
-      		Message = std::string(static_cast<char *>(stopRequest.data()), stopRequest.size());
-          if (Message == "StopRecording")
+          ros::Rate r(30);
+
+          while (frame < 150)
           {
-            std::cout << "[ZMQ] Received StopRecording" << std::endl;
-          }
-    			else
-          {
-            std::cout << "[ZMQ] Invalid message" << std::endl;
+            ros::spinOnce();
+            r.sleep();
           }
 
+          // Get the file name
+      		zmq::message_t stopRequest(16);
+          std::memcpy((void *)stopRequest.data(), "StoppedRecording", 16);
+    			kinectSocket.send(stopRequest);
+    			std::cout << "[ZMQ] Sent StoppedRecording" << std::endl;
+
           // stop the spinner
-          spinner.stop();
           fOut.close();
 
           std::cout << "[FSTREAM] Closed file and stopped recording" << std::endl;
@@ -143,6 +137,8 @@ int main(int argc, char **argv)
   else
   {
     std::string Message;
+
+    ros::AsyncSpinner spinner(0);
 
     // create and initialize file stream and write file header
     fOut.open(argv[1]);
