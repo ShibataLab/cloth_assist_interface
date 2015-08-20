@@ -1,3 +1,10 @@
+<!--
+marker.launch: ROS Launch file to track AR Marker for kinect and mocap calibration.
+Requirements: ar_track_alvar installed, kinect2_bridge up and running
+Author: Nishanth Koganti
+Date: 2015/8/20
+-->
+
 <launch>
 	<arg name="marker_size" default="12.2" />
 	<arg name="max_new_marker_error" default="0.05" />

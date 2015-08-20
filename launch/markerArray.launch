@@ -1,3 +1,15 @@
+<!--
+markerArray.launch: ROS Launch file to track AR marker bundle for robust kinect and mocap calibration.
+Requirements: ar_track_alvar installed, Array.xml file with calibration info and kinect2_bridge up and running
+Author: Nishanth Koganti
+Date: 2015/8/20
+
+TODO:
+1) Improve Array.xml file for robust tracking of marker
+2) Test working of calibration codes with marker bundle
+3) If accuracy is improved, replace with older calibration technique
+-->
+
 <launch>
   <arg name="marker_size" default="4.6" />
   <arg name="max_new_marker_error" default="0.2" />
