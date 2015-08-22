@@ -1,11 +1,13 @@
-// Processor Class Definition
-// Class depends on the IAI Kinect2 Package
+// tracker.h: Tracker class definition for tracking clothing articles
+// Requirements: OpenCV and PCL headers and libraries installed with iai kinect2 repo
 // Author: Nishanth Koganti
-// Date: 2015/7/26
+// Date: 2015/8/22
+
+// TODO:
 
 #pragma once
-#ifndef __CLOTH_PROCESSOR_H__
-#define __CLOTH_PROCESSOR_H__
+#ifndef __CLOTH_TRACKER_H__
+#define __CLOTH_TRACKER_H__
 
 // CPP headers
 #include <cmath>
@@ -50,9 +52,8 @@
 #define VMIN 10
 #define VMAX 256
 
-/******************************************************************************/
-// Processor Class
-class Processor
+// Tracker class
+class Tracker
 {
   private:
     // mutex for synchronization
@@ -116,10 +117,10 @@ class Processor
   public:
     // class constructor
     // takes 3 input arguments topic color, topic depth and topic type
-    Processor(const std::string &topicColor, const std::string &topicDepth, const std::string &topicType);
+    Tracker(const std::string &topicColor, const std::string &topicDepth, const std::string &topicType);
 
     // class destructor
-    ~Processor();
+    ~Tracker();
 
     // run function
     void run();

@@ -1,11 +1,14 @@
-// Cloth tracker code using camshift algorithm
-// Depends on IAI Kinect2 Bridge
+// cloth_tracker.cpp: Program to track clothing articles using opencv and pcl
+// Requirements: depends on tracker class files and iai kinect2 bridge
 // Author: Nishanth Koganti
-// Date: 2015/7/26
+// Date: 2015/8/22
 
-# include <processor.h>
+// TODO:
 
-/******************************************************************************/
+
+// tracker class definition
+# include <tracker.h>
+
 // help function
 void help(const std::string &path)
 {
@@ -13,7 +16,6 @@ void help(const std::string &path)
             << "  mode: 'qhd', 'hd', 'sd'" << std::endl;
 }
 
-/******************************************************************************/
 // main function
 int main(int argc, char **argv)
 {
@@ -78,12 +80,12 @@ int main(int argc, char **argv)
   std::cout << "topic color: " << topicColor << std::endl;
   std::cout << "topic depth: " << topicDepth << std::endl;
 
-  // create processor with parsed command line parameters
-  Processor processor(topicColor, topicDepth, topicType);
+  // create tracker with parsed command line parameters
+  Tracker tracker(topicColor, topicDepth, topicType);
 
-  // start running processor instance
-  std::cout << "starting processor..." << std::endl;
-  processor.run();
+  // start running tracker instance
+  std::cout << "starting tracker..." << std::endl;
+  tracker.run();
 
   // clean shutdown
   ros::shutdown();

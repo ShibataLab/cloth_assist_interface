@@ -1,12 +1,16 @@
-// Processor Class Definition
-// Relies on the IAI Kinect2 Bridge
+// tracker.cpp: Tracker class function declaration for tracking clothing articles
+// using the cam shift algorithm and obtain point cloud using pcl functions
+// Requirements: relies on the use of iai kinect2 bridge, opencv and pcl
 // Author: Nishanth Koganti
-// Date: 2015/7/26
+// Date: 2015/8/22
 
-#include <processor.h>
+// TODO:
+// 1) Improve point cloud processing using different filters
+
+#include <tracker.h>
 
 // class constructor
-Processor::Processor(const std::string &topicColor, const std::string &topicDepth, const std::string &topicType)
+Tracker::Tracker(const std::string &topicColor, const std::string &topicDepth, const std::string &topicType)
     : topicColor(topicColor), topicDepth(topicDepth), topicType(topicType), updateImage(false), running(false), frame(0), queueSize(5), nh("~"), spinner(0), it(nh)
 {
   // create matrices for intrinsic parameters
@@ -15,12 +19,12 @@ Processor::Processor(const std::string &topicColor, const std::string &topicDept
 }
 
 // class destructor
-Processor::~Processor()
+Tracker::~Tracker()
 {
 }
 
 // run function
-void Processor::run()
+void Tracker::run()
 {
   // start the kinect depth sensor
   start();
@@ -36,7 +40,7 @@ void Processor::run()
 }
 
 // start function
-void Processor::start()
+void Tracker::start()
 {
   // set running flag, will be unset on shutdown
   running = true;
@@ -61,9 +65,9 @@ void Processor::start()
   pubPointCloud = nh.advertise<pcl::PointCloud<pcl::PointXYZ> > ("/cloth/points", 5);
 
   // creating a exact synchronizer for 4 ros topics with queueSize
-  // the processor class callback function is set as the callback function
+  // the Tracker class callback function is set as the callback function
   syncExact = new message_filters::Synchronizer<ExactSyncPolicy>(ExactSyncPolicy(queueSize), *subImageColor, *subImageDepth, *subCameraInfoColor, *subCameraInfoDepth);
-  syncExact->registerCallback(boost::bind(&Processor::callback, this, _1, _2, _3, _4));
+  syncExact->registerCallback(boost::bind(&Tracker::callback, this, _1, _2, _3, _4));
 
   // set the width and height parameters for cloth tracking functions
   if(topicType == "hd")
@@ -100,7 +104,7 @@ void Processor::start()
 }
 
 // stop function to have clean shutdown
-void Processor::stop()
+void Tracker::stop()
 {
   // stop the spinner
   spinner.stop();
@@ -117,7 +121,7 @@ void Processor::stop()
 }
 
 // message filter callback function
-void Processor::callback(const sensor_msgs::Image::ConstPtr imageColor, const sensor_msgs::Image::ConstPtr imageDepth,
+void Tracker::callback(const sensor_msgs::Image::ConstPtr imageColor, const sensor_msgs::Image::ConstPtr imageDepth,
               const sensor_msgs::CameraInfo::ConstPtr cameraInfoColor, const sensor_msgs::CameraInfo::ConstPtr cameraInfoDepth)
 {
   // initialization
@@ -147,7 +151,7 @@ void Processor::callback(const sensor_msgs::Image::ConstPtr imageColor, const se
 
 // function to obtain cloth calibration values
 // cloth calibrate function
-void Processor::clothCalibrate()
+void Tracker::clothCalibrate()
 {
 	// opencv initialization
 	int key = 0;
@@ -225,7 +229,7 @@ void Processor::clothCalibrate()
 }
 
 // function to display images
-void Processor::clothTracker()
+void Tracker::clothTracker()
 {
   // variable initialization
   cv::Rect window;
@@ -284,6 +288,7 @@ void Processor::clothTracker()
       // initialize cloud
       cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
 
+      // set cloud parameters
       cloud->header.frame_id = "cloth_frame";
       cloud->width = roi.cols;
       cloud->height = roi.rows;
@@ -330,7 +335,7 @@ void Processor::clothTracker()
 }
 
 // function to get image roi from color and depth images
-void Processor::createROI(cv::Mat &color, cv::Mat &depth, cv::Mat &backproj, cv::Mat &roi)
+void Tracker::createROI(cv::Mat &color, cv::Mat &depth, cv::Mat &backproj, cv::Mat &roi)
 {
   // cam shift initialization
   cv::Rect window;
@@ -392,31 +397,41 @@ void Processor::createROI(cv::Mat &color, cv::Mat &depth, cv::Mat &backproj, cv:
 }
 
 // function to create point cloud from extracted ROI
-void Processor::createCloud(cv::Mat &roi, pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud)
+void Tracker::createCloud(cv::Mat &roi, pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud)
 {
   // variables
   cv::Rect window = this->window;
   const float badPoint = std::numeric_limits<float>::quiet_NaN();
 
+  // parallel processing of pixel values
   #pragma omp parallel for
   for(int r = 0; r < roi.rows; ++r)
   {
+    // create row of Points
     pcl::PointXYZ *itP = &cloud->points[r * roi.cols];
+
+    // get pointer to row in depth image
     const uint16_t *itD = roi.ptr<uint16_t>(r);
+
+    // get the x and y values
     const float y = lookupY.at<float>(0, window.y+r);
     const float *itX = lookupX.ptr<float>();
     itX = itX + window.x;
 
+    // convert all the depth values in the depth image to Points in point cloud
     for(size_t c = 0; c < (size_t)roi.cols; ++c, ++itP, ++itD, ++itX)
     {
       register const float depthValue = *itD / 1000.0f;
+
       // Check for invalid measurements
       if(isnan(depthValue) || depthValue <= 0.001)
       {
-
+        // set values to NaN for later processing
         itP->x = itP->y = itP->z = badPoint;
         continue;
       }
+
+      // set the values for good points
       itP->z = depthValue;
       itP->x = *itX * depthValue;
       itP->y = y * depthValue;
@@ -425,12 +440,12 @@ void Processor::createCloud(cv::Mat &roi, pcl::PointCloud<pcl::PointXYZ>::Ptr &c
 }
 
 // mouse click callback function for T-shirt color calibration
-void Processor::onMouse(int event, int x, int y, int flags, void* param)
+void Tracker::onMouse(int event, int x, int y, int flags, void* param)
 {
   // this line needs to be added if we want to access the class private parameters
   // within a static function
   // URL: http://stackoverflow.com/questions/14062501/giving-callback-function-access-to-class-data-members-in-c
-  Processor* ptr = (Processor*) param;
+  Tracker* ptr = (Tracker*) param;
 
 	if (ptr->selectObject)
 	{
@@ -455,7 +470,7 @@ void Processor::onMouse(int event, int x, int y, int flags, void* param)
 }
 
 // function to obtain Mat from ros image sensor_msg
-void Processor::readImage(const sensor_msgs::Image::ConstPtr msgImage, cv::Mat &image) const
+void Tracker::readImage(const sensor_msgs::Image::ConstPtr msgImage, cv::Mat &image) const
 {
   // obtain image data and encoding from sensor msg
   cv_bridge::CvImageConstPtr pCvImage;
@@ -466,7 +481,7 @@ void Processor::readImage(const sensor_msgs::Image::ConstPtr msgImage, cv::Mat &
 }
 
 // function to obtain camera info from message filter msgs
-void Processor::readCameraInfo(const sensor_msgs::CameraInfo::ConstPtr cameraInfo, cv::Mat &cameraMatrix) const
+void Tracker::readCameraInfo(const sensor_msgs::CameraInfo::ConstPtr cameraInfo, cv::Mat &cameraMatrix) const
 {
   // get pointer for first element in cameraMatrix
   double *itC = cameraMatrix.ptr<double>(0, 0);
@@ -479,14 +494,18 @@ void Processor::readCameraInfo(const sensor_msgs::CameraInfo::ConstPtr cameraInf
 }
 
 // function to create lookup table for obtaining x,y,z values
-void Processor::createLookup(size_t width, size_t height)
+void Tracker::createLookup(size_t width, size_t height)
 {
+  // get the values from the camera matrix of intrinsic parameters
   const float fx = 1.0f / cameraMatrixColor.at<double>(0, 0);
   const float fy = 1.0f / cameraMatrixColor.at<double>(1, 1);
   const float cx = cameraMatrixColor.at<double>(0, 2);
   const float cy = cameraMatrixColor.at<double>(1, 2);
+
+  // float iterator
   float *it;
 
+  // lookup table for y pixel locations
   lookupY = cv::Mat(1, height, CV_32F);
   it = lookupY.ptr<float>();
   for(size_t r = 0; r < height; ++r, ++it)
@@ -494,6 +513,7 @@ void Processor::createLookup(size_t width, size_t height)
     *it = (r - cy) * fy;
   }
 
+  // lookup table for x pixel locations
   lookupX = cv::Mat(1, width, CV_32F);
   it = lookupX.ptr<float>();
   for(size_t c = 0; c < width; ++c, ++it)
