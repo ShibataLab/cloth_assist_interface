@@ -1,6 +1,10 @@
-% Program to spatially align Optitrack and Kinect Readings
+% computeProjection.m: Program to spatially align Optitrack and Kinect Readings
+% and apply absolute orientation algorithm for calibration
 % Author: Nishanth Koganti
-% Date: 2015/1/21
+% Date: 2015/8/22
+
+% TODO:
+% 1) Implement in python
 
 function computeProjection(fileName, offset, mode)
 
@@ -40,7 +44,7 @@ if mode == 0
     end
     mocapPos = mocapPos./nMarkers;
 
-    [R,T,c,err,kOut] = absoluteOrientationSVD(kinPos',mocapPos'); 
+    [R,T,c,err,kOut] = absoluteOrientationSVD(kinPos',mocapPos');
     kinOut = kOut';
     transMatrix = [c*R; 0 0 0];
     transMatrix = [transMatrix [T; 1]];

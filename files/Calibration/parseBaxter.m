@@ -1,6 +1,9 @@
-% Matlab code to parse baxter recorder output file
+% parseBaxter.m: Matlab code to parse baxter recorder output file
 % Author: Nishanth Koganti
-% Date: 2015/08/24
+% Date: 2015/08/23
+
+% TODO:
+% 1) Implement in python
 
 function [Head, Data] = parseBaxter(fileName)
 

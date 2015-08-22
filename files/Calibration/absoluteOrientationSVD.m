@@ -1,16 +1,19 @@
-% Program to compute the absolute orientation between two point sets
+% absoluteOrientationSVD.m: Program to compute the absolute orientation between two point sets
 % Source: http://math.stackexchange.com/questions/745234/calculate-rotation-translation-matrix-to-match-measurement-points-to-nominal-poi
 % Author: Nishanth Koganti
-% Date: 2015/02/05
+% Date: 2015/08/22
+
+% TODO:
+% 1) Implement in python
 
 function [R, t, c, err, xout] = absoluteOrientationSVD(x, y)
 
 % check for the number of samples
 assert(isequal(size(x),size(y)), 'inputs must have the same size');
-assert(size(x,2) > size(x,1), 'insufficient number of points'); 
+assert(size(x,2) > size(x,1), 'insufficient number of points');
 N = size(x,2);
 
-% compute the mean 
+% compute the mean
 x_bar = mean(x,2);
 y_bar = mean(y,2);
 
@@ -18,18 +21,18 @@ y_bar = mean(y,2);
 xTemp = x - repmat(x_bar,1,N);
 yTemp = y - repmat(y_bar,1,N);
 
-% compute the covariance 
+% compute the covariance
 Sigma = yTemp*xTemp';
 
-% compute the optimal rotation and account for reflections 
-[U,D,V] = svd(Sigma); 
+% compute the optimal rotation and account for reflections
+[U,D,V] = svd(Sigma);
 S = diag([1 1 sign(det(U)*det(V))]); % for reflections
 R = U*S*V';
 
 % scale factor
 c = trace(D*S)./sum(sum(xTemp.^2,2));
 
-% the translation 
+% the translation
 t = y_bar - c*R*x_bar;
 
 %Compute the residual error
@@ -40,7 +43,7 @@ for i=1:N
     xout(:,i) = c*R*x(:,i) + t;
     d = y(:,i) - (c*R*x(:,i) + t);
     err = err + norm(d);
-end      
+end
 err = err/N;
 
-end 
+end

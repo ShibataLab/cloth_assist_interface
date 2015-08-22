@@ -1,6 +1,9 @@
-% Matlab code to parse Kinect marker tracker output
+% parseKinect.m: Matlab code to parse Kinect marker tracker output
 % Author: Nishanth Koganti
-% Date: 2015/08/14
+% Date: 2015/08/22
+
+% TODO:
+% 1) Implement in python
 
 function [Head, Data] = parseKinect(fileName)
 

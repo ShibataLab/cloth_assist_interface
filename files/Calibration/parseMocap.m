@@ -1,6 +1,9 @@
-% Matlab code to parse evart mocap trc files
+% parseMocap.m: Matlab code to parse evart mocap trc files
 % Author: Nishanth Koganti
-% Date: 2015/08/14
+% Date: 2015/08/22
+
+% TODO:
+% 1) Implement in python
 
 function [Head, Data] = parseMocap(fileName)
 
