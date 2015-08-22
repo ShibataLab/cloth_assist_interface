@@ -39,7 +39,7 @@ add_custom_target(additional_files_${PROJECT_NAME} SOURCES ${FILES_LIST})
 
 include_directories(include ${PCL_INCLUDE_DIRS} ${catkin_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS})
 
-add_executable(cloth_tracker nodes/cloth_tracker.cpp src/processor.cpp)
+add_executable(cloth_tracker nodes/cloth_tracker.cpp src/tracker.cpp)
 target_link_libraries(cloth_tracker ${PCL_LIBRARIES} ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
 add_executable(cloth_recorder nodes/cloth_recorder.cpp)
