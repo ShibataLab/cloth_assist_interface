@@ -1,8 +1,12 @@
-// Recorder Class Definition
-// Relies on the IAI Kinect2 Bridge and ROS Bag
+// recorder.cpp: Class definition for recording kinect2 topics than can be processed later
+// Requirements: recorder class definition header
 // Author: Nishanth Koganti
-// Date: 2015/8/1
+// Date: 2015/8/22
 
+// TODO:
+// 1) Add functionality to run stand alone without synchronizer
+
+// all required header files included in the class definition header
 #include <recorder.h>
 
 // class constructor
@@ -29,22 +33,25 @@ void Recorder::run()
   zmq::context_t context(1);
   zmq::socket_t kinectSocket(context, ZMQ_PAIR);
 
+  // create kinect server to synchronize with
   kinectSocket.bind("tcp://*:5555");
   std::cout << "[ZMQ] Created kinect server" << std::endl;
 
   while (1)
   	{
-  		// Get the file name
+      // wait for message from clinet
   		zmq::message_t request;
   		kinectSocket.recv(&request);
   		Message = std::string(static_cast<char *>(request.data()), request.size());
 
+      // stop server and clean exit if Stop message is received
       if (Message == "StopServer")
   		{
   			std::cout << "[ZMQ] Received Stop Server" << std::endl;
   			break;
   		}
 
+      // initialize variables for recording if New message is received
       else if (Message == "NewTrial")
   		{
   			std::cout << "[ZMQ] Received NewTrial" << std::endl;
@@ -65,6 +72,7 @@ void Recorder::run()
         bag.open(fileName, rosbag::bagmode::Write);
         std::cout << "[ROSBAG] Opening ROS bag" << std::endl;
 
+        // wait for start recording message from client
         zmq::message_t startRequest;
   			kinectSocket.recv(&startRequest);
   			Message = std::string(static_cast<char *>(startRequest.data()), startRequest.size());
@@ -81,7 +89,7 @@ void Recorder::run()
           continue;
         }
 
-        // Get the file name
+        // wait for stop recording message from client
     		zmq::message_t stopRequest;
     		kinectSocket.recv(&stopRequest);
     		Message = std::string(static_cast<char *>(stopRequest.data()), stopRequest.size());
@@ -115,7 +123,6 @@ void Recorder::start()
   topicCameraInfoColor = topicColor.substr(0, topicColor.rfind('/')) + "/camera_info";
   topicCameraInfoDepth = topicDepth.substr(0, topicDepth.rfind('/')) + "/camera_info";
 
-
   // TransportHints stores the transport settings for the image topic subscriber
   // here we are giving the setting of raw or compressed using the useCompressed variable
   image_transport::TransportHints hints("raw");
@@ -146,13 +153,13 @@ void Recorder::stop()
   delete subCameraInfoDepth;
 }
 
-// message filter callback function
+// message filter callback function, all processing is done here
 void Recorder::callback(const sensor_msgs::Image::ConstPtr imageColor, const sensor_msgs::Image::ConstPtr imageDepth,
               const sensor_msgs::CameraInfo::ConstPtr cameraInfoColor, const sensor_msgs::CameraInfo::ConstPtr cameraInfoDepth)
 {
   ros::Time time = ros::Time::now();
 
-  // write point cloud message to the ros bag file
+  // write point cloud message and camera info to the ros bag file
   bag.write(topicColor, time, *imageColor);
   bag.write(topicDepth, time, *imageDepth);
   bag.write(topicCameraInfoColor, time, *cameraInfoColor);

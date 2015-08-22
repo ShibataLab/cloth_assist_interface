@@ -1,11 +1,12 @@
-// Kinect Topics Recorder using ros bag
-// Depends on IAI Kinect2 Bridge and ROS Bag
+// kinect_recorder.cpp: Program to subscribe to kinect2 topics and synchronize them
+// to save to a ros bag file.
+// Requirements: recorder class files and synchronizer client running for control
 // Author: Nishanth Koganti
-// Date: 2015/8/1
+// Date: 2015/8/22
 
+// all headers recorded in class definition header
 # include <recorder.h>
 
-/******************************************************************************/
 // help function
 void help(const std::string &path)
 {
@@ -13,8 +14,6 @@ void help(const std::string &path)
             << "  mode: 'qhd', 'hd', 'sd'" << std::endl;
 }
 
-/******************************************************************************/
-// main function
 int main(int argc, char **argv)
 {
   // create ros node with a random name to avoid conflicts
@@ -26,8 +25,8 @@ int main(int argc, char **argv)
     return 0;
   }
 
-  // create strings for different kinect2 ros topics
   // ns = kinect2
+  // selecting default topic names when the options are not provided
   std::string topicType = "sd";
   std::string ns = K2_DEFAULT_NS;
   std::string fileName = "kinect";

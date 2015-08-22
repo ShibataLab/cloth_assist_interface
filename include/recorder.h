@@ -1,7 +1,7 @@
-// Recorder Class Definition
-// Class depends on the IAI Kinect2 Package
+// recorder.h: Recorder class definition for storing kinect2 topic data in a ros bag file
+// Requirements: rosbag as package dependency and iai kinect2 repository
 // Author: Nishanth Koganti
-// Date: 2015/7/26
+// Date: 2015/8/22
 
 #pragma once
 #ifndef __CLOTH_RECORDER_H__
@@ -39,8 +39,7 @@
 // kinect2 bridge header
 #include <kinect2_bridge/kinect2_definitions.h>
 
-/******************************************************************************/
-// Recorder Class
+// recorder class
 class Recorder
 {
   private:
