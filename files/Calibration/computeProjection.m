@@ -5,6 +5,7 @@
 
 % TODO:
 % 1) Implement in python
+% 2) Find offset automatically
 
 function computeProjection(fileName, offset, mode)
 
