@@ -15,7 +15,7 @@ import sys
 import rospy
 import argparse
 import baxter_interface
-from Recorder import JointRecorder
+from recorder import JointRecorder
 
 # main program
 def main():
