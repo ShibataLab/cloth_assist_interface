@@ -69,9 +69,6 @@ class Puppeteer(object):
         self._controlArm.set_joint_position_speed(0.4)
         self._puppetArm.set_joint_position_speed(0.4)
 
-        # end of Gripper Cuff Control
-        print("Gripper Cuff Control Completed.")
-
         # disable robot if initially disabled
         if not self._initState:
             print("Disabling robot.")

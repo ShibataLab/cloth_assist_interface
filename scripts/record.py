@@ -26,7 +26,7 @@ def main():
     parser = argparse.ArgumentParser(formatter_class = argFmt, description = main.__doc__)
 
     # add arguments to parser
-    parser.add_argument('-f', '--file', type = str, help = 'Output Joint Angle Filename')
+    parser.add_argument('-f', '--fileName', type = str, help = 'Output Joint Angle Filename')
 
     # parse the arguments
     args = parser.parse_args(rospy.myargv()[1:])
@@ -56,12 +56,14 @@ def main():
     print("Enabling the Robot")
     rs.enable()
 
+    recordingRate = 100
+
     # if optional fileName argument is provided then record mode
     if args.fileName:
 
         # initialize joint recorder
-        recorder = JointRecorder(args.file, 100, 0)
-        recordRate = rospy.Rate(100)
+        recorder = JointRecorder(args.fileName, recordingRate, 0)
+        recordRate = rospy.Rate(recordingRate)
 
         # start recording
         print("Recording, Press Ctrl-C to stop")
@@ -78,8 +80,6 @@ def main():
 
     # if no optional argument is provided then in sync mode
     else:
-        recordingRate = 100
-
         # zmq initialization
         kinectPort = "5555"
         playerPort = "5556"
