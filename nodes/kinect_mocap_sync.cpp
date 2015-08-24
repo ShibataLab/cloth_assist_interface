@@ -1,7 +1,7 @@
-// kinect_synchronizer.cpp: Program to synchronize kinect and motion capture system using zeromq
+// kinect_mocap_sync.cpp: Program to synchronize kinect and motion capture system using zeromq
 // Requirements: marker_recorder and MocapInterface.exe servers running with marker tracking running
 // Author: Nishanth Koganti
-// Date: 2015/8/20
+// Date: 2015/8/24
 
 // TODO:
 // 0) Add two modes in the synchronizer depending on stopping method (DONE)
