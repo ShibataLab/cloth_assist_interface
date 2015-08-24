@@ -154,7 +154,7 @@ void Tracker::callback(const sensor_msgs::Image::ConstPtr imageColor, const sens
 void Tracker::clothCalibrate()
 {
 	// opencv initialization
-	int key = 0;
+	char key = 0;
 	cv::Mat color, depth, disp, hsv, mask, hue;
 
 	// GUI initialization
