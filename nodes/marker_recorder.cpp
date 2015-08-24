@@ -71,7 +71,7 @@ int main(int argc, char **argv)
   ros::NodeHandle n;
 
   // subscribe to ros topic
-  ros::Subscriber sub = n.subscribe("ar_pose_marker", 0, callback);
+  ros::Subscriber sub = n.subscribe("ar_pose_marker", 1, callback);
 
   // rate variable for looping
   ros::Rate r(30);
