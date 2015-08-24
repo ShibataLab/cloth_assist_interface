@@ -19,12 +19,18 @@
   <build_depend>rosbag</build_depend>
   <build_depend>rostime</build_depend>
   <build_depend>std_msgs</build_depend>
+  <build_depend>actionlib</build_depend>
   <build_depend>cv_bridge</build_depend>
   <build_depend>sensor_msgs</build_depend>
+  <build_depend>control_msgs</build_depend>
   <build_depend>libpcl-all-dev</build_depend>
   <build_depend>kinect2_bridge</build_depend>
+  <build_depend>trajectory_msgs</build_depend>
   <build_depend>image_transport</build_depend>
   <build_depend>message_filters</build_depend>
+  <build_depend>baxter_core_msgs</build_depend>
+  <build_depend>baxter_interface</build_depend>
+  <build_depend>dynamic_reconfigure</build_depend>
   <build_depend>ar_track_alvar_msgs</build_depend>
   <build_depend>compressed_image_transport</build_depend>
   <build_depend>compressed_depth_image_transport</build_depend>
@@ -34,13 +40,20 @@
   <run_depend>rosbag</run_depend>
   <run_depend>rostime</run_depend>
   <run_depend>std_msgs</run_depend>
+  <run_depend>actionlib</run_depend>
   <run_depend>cv_bridge</run_depend>
   <run_depend>libpcl-all</run_depend>
   <run_depend>sensor_msgs</run_depend>
+  <run_depend>control_msgs</run_depend>
   <run_depend>libpcl-all-dev</run_depend>
+  <run_depend>kinect2_bridge</run_depend>
+  <run_depend>trajectory_msgs</run_depend>
   <run_depend>message_runtime</run_depend>
   <run_depend>message_filters</run_depend>
   <run_depend>image_transport</run_depend>
+  <run_depend>baxter_core_msgs</run_depend>
+  <run_depend>baxter_interface</run_depend>
+  <run_depend>dynamic_reconfigure</run_depend>
   <run_depend>ar_track_alvar_msgs</run_depend>
   <run_depend>compressed_image_transport</run_depend>
   <run_depend>compressed_depth_image_transport</run_depend>

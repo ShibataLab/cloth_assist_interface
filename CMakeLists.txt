@@ -19,7 +19,26 @@ ELSE()
   MESSAGE(ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
 ENDIF()
 
-find_package(catkin REQUIRED COMPONENTS roscpp rostime rosbag std_msgs sensor_msgs message_filters cv_bridge image_transport compressed_image_transport compressed_depth_image_transport kinect2_bridge ar_track_alvar_msgs)
+find_package(catkin
+  REQUIRED
+  COMPONENTS
+  roscpp
+  rostime
+  rosbag
+  std_msgs
+  sensor_msgs
+  message_filters
+  cv_bridge
+  image_transport
+  compressed_image_transport
+  compressed_depth_image_transport
+  kinect2_bridge
+  ar_track_alvar_msgs
+  baxter_core_msgs
+  baxter_interface
+  control_msgs
+  actionlib)
+
 find_package(PCL REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(OpenMP REQUIRED)
@@ -55,4 +74,5 @@ add_executable(kinect_synchronizer nodes/kinect_synchronizer.cpp)
 target_link_libraries(kinect_synchronizer -lzmq)
 
 ## Install
-install(DIRECTORY include/${PROJECT_NAME}/ DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION} FILES_MATCHING PATTERN "*.h" PATTERN ".svn" EXCLUDE)
+install(DIRECTORY include/ DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION} USE_SOURCE_PERMISSIONS)
+install(DIRECTORY scripts/ DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION} USE_SOURCE_PERMISSIONS)
