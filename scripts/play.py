@@ -153,6 +153,12 @@ def main():
 
     # if no arguments are given then it will run in sync mode
     else:
+        context = zmq.Context()
+
+        socket = context.socket(zmq.PAIR)
+
+        socket.bind("tcp://*:5556")
+
         serverFlag = True
         while serverFlag:
             msg = socket.recv()
@@ -186,8 +192,8 @@ def main():
                 socket.send("StoppedPlaying")
                 print "[ZMQ] Sent StoppedPlaying"
 
-            # finish
-            socket.close()
+        # finish
+        socket.close()
 
     # clean shutdown
     cleanShutdown()

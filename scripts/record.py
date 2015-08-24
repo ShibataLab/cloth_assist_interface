@@ -12,6 +12,7 @@
 # import external libraries
 import os
 import sys
+import zmq
 import rospy
 import argparse
 import baxter_interface
