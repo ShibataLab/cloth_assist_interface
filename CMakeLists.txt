@@ -72,8 +72,11 @@ target_link_libraries(kinect_recorder ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} -l
 add_executable(marker_recorder nodes/marker_recorder.cpp)
 target_link_libraries(marker_recorder ${catkin_LIBRARIES} -lzmq)
 
-add_executable(kinect_synchronizer nodes/kinect_synchronizer.cpp)
-target_link_libraries(kinect_synchronizer -lzmq)
+add_executable(kinect_mocap_sync nodes/kinect_mocap_sync.cpp)
+target_link_libraries(kinect_mocap_sync -lzmq)
+
+add_executable(baxter_mocap_sync nodes/baxter_mocap_sync.cpp)
+target_link_libraries(baxter_mocap_sync -lzmq)
 
 ## Install
 install(DIRECTORY include/ DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION} USE_SOURCE_PERMISSIONS)
