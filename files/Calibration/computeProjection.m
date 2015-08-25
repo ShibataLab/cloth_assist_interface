@@ -1,4 +1,4 @@
-% computeProjection.m: Program to spatially align Optitrack and Kinect Readings
+% computeProjection.m: Program to spatially align motion capture and Kinect Readings
 % and apply absolute orientation algorithm for calibration
 % Author: Nishanth Koganti
 % Date: 2015/8/22
@@ -7,7 +7,7 @@
 % 1) Implement in python
 % 2) Find offset automatically
 
-function computeProjection(fileName, offset, mode)
+function computeProjection(fileName, mode)
 
 close all;
 fontSize = 12;
@@ -18,39 +18,58 @@ if mode == 0
     [~,kinectData] = parseKinect(fileName);
     [~,mocapData] = parseMocap(sprintf('%s.trc',fileName));
 
-    %nMocap = size(mocapData,1);
+    nMocap = size(mocapData,1);
     nKinect = size(kinectData,1);
     nMarkers = (size(mocapData,2) - 2)/3;
 
-   mocapT = mocapData(:,2);
-   kinectT = kinectData(:,2);
-   mocapInd = zeros(nKinect,1);
-    for j = 1:nKinect
-        tRef = kinectT(j);
-        [~,ind] = min((tRef - mocapT).^2);
-        if ind - offset < 1
-            mocapInd(j) = 1;
-        else
-            mocapInd(j) = ind - offset;
+    mocapT = mocapData(:,2);
+    kinectT = kinectData(:,2);
+    
+    indices = 0:40;
+    errs = zeros(1,length(indices));
+    minErr = 1.0; minOffset = 0;
+    minR = []; minT = []; minc = 0.0; minKOut = [];
+    
+    
+    for offset = indices
+        mocapInd = zeros(nKinect,1);
+    
+        for j = 1:nKinect
+            tRef = kinectT(j);
+            [~,ind] = min((tRef - mocapT).^2);
+            if ind - offset < 1
+                mocapInd(j) = 1;            
+            elseif ind - offset > nMocap 
+                mocapInd(j) = nMocap;
+            else
+                mocapInd(j) = ind - offset;
+            end
+        end
+        
+        kinPos = kinectData(:,3:5);
+        mocapPos = zeros(nKinect,3);
+
+        for j = 1:nMarkers
+            mocapPos(:,1) = mocapPos(:,1) + mocapData(mocapInd,3+(j-1)*3);
+            mocapPos(:,2) = mocapPos(:,2) + mocapData(mocapInd,4+(j-1)*3);
+            mocapPos(:,3) = mocapPos(:,3) + mocapData(mocapInd,5+(j-1)*3);
+        end
+        mocapPos = mocapPos./nMarkers;
+
+        [R,T,c,err,kOut] = absoluteOrientationSVD(kinPos',mocapPos');
+
+        errs(offset+1) = err;
+        if err < minErr
+            minR = R; minT = T; minc = c; minKOut = kOut;
+            minErr = err; minOffset = offset;
         end
     end
 
-    kinPos = kinectData(:,3:5);
-    mocapPos = zeros(nKinect,3);
-
-    for j = 1:nMarkers
-        mocapPos(:,1) = mocapPos(:,1) + mocapData(mocapInd,3+(j-1)*3);
-        mocapPos(:,2) = mocapPos(:,2) + mocapData(mocapInd,4+(j-1)*3);
-        mocapPos(:,3) = mocapPos(:,3) + mocapData(mocapInd,5+(j-1)*3);
-    end
-    mocapPos = mocapPos./nMarkers;
-
-    [R,T,c,err,kOut] = absoluteOrientationSVD(kinPos',mocapPos');
-    kinOut = kOut';
-    transMatrix = [c*R; 0 0 0];
-    transMatrix = [transMatrix [T; 1]];
-    dlmwrite('KinectCalibration', transMatrix);
-    fprintf('Error: %f\n',err);
+    kinOut = minKOut';
+    transMatrix = [minc*minR; 0 0 0];
+    transMatrix = [transMatrix [minT; 1]];
+    dlmwrite(sprintf('%s.cal',fileName), transMatrix);
+    fprintf('Error: %f, Offset: %d\n',minErr,minOffset);
 
     figure;
     hold on;
@@ -76,11 +95,16 @@ if mode == 0
     plot3(kinOut(:,1), kinOut(:,2), kinOut(:,3), '.r', 'MarkerSize', markerSize);
     hold off;
 
+    figure;
+    plot(indices,errs,'.-','LineWidth',2);
+    
 elseif mode == 1
     % Baxter Calibration Mode
     [~,baxterData] = parseBaxter(sprintf('%sEE',fileName));
     [~,mocapData] = parseOptitrack(sprintf('%s.csv',fileName));
 
+    offset = 5;
+    
     baxterData = baxterData(1:offset:end,:);
 
     mocapT = mocapData(:,2);
