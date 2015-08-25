@@ -18,7 +18,7 @@
 #include <zmq.hpp>
 
 // preprocessor directives
-#define MOCAPIP "tcp://192.168.0.3:5555"
+#define MOCAPIP "tcp://192.168.0.5:5555"
 #define KINECTIP "tcp://localhost:5555"
 
 // namespace declarations
@@ -128,20 +128,17 @@ int main(int argc, char** argv)
 			if (Message == "Y")
 				sleep(6);
 
-			// send kinect message
-			message_t startRequestKinect(14);
-			memcpy((void *)startRequestKinect.data(), "StartRecording", 14);
-			kinectSocket.send(startRequestKinect);
-			cout << "[ZMQ Kinect] Sent StartRecording" << endl;
-
-			//have a gap of atleast 5 milliseconds
-			usleep(5000);
-
 			// start recording request
 			message_t startRequestMocap(14);
 			memcpy((void *)startRequestMocap.data(), "StartRecording", 14);
 			mocapSocket.send(startRequestMocap);
 			cout << "[ZMQ Mocap] Sent StartRecording" << endl;
+
+			// send kinect message
+			message_t startRequestKinect(14);
+			memcpy((void *)startRequestKinect.data(), "StartRecording", 14);
+			kinectSocket.send(startRequestKinect);
+			cout << "[ZMQ Kinect] Sent StartRecording" << endl;
 
 			if (syncMode == 0)
 			{
