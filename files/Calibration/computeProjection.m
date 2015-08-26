@@ -24,28 +24,28 @@ if mode == 0
 
     mocapT = mocapData(:,2);
     kinectT = kinectData(:,2);
-    
+
     indices = 0:40;
     errs = zeros(1,length(indices));
     minErr = 1.0; minOffset = 0;
     minR = []; minT = []; minc = 0.0; minKOut = [];
-    
-    
+
+
     for offset = indices
         mocapInd = zeros(nKinect,1);
-    
+
         for j = 1:nKinect
             tRef = kinectT(j);
             [~,ind] = min((tRef - mocapT).^2);
             if ind - offset < 1
-                mocapInd(j) = 1;            
-            elseif ind - offset > nMocap 
+                mocapInd(j) = 1;
+            elseif ind - offset > nMocap
                 mocapInd(j) = nMocap;
             else
                 mocapInd(j) = ind - offset;
             end
         end
-        
+
         kinPos = kinectData(:,3:5);
         mocapPos = zeros(nKinect,3);
 
@@ -69,6 +69,7 @@ if mode == 0
     transMatrix = [minc*minR; 0 0 0];
     transMatrix = [transMatrix [minT; 1]];
     dlmwrite(sprintf('%s.cal',fileName), transMatrix);
+    dlmwrite(sprintf('%s.offset',fileName), minOffset);
     fprintf('Error: %f, Offset: %d\n',minErr,minOffset);
 
     figure;
@@ -97,14 +98,20 @@ if mode == 0
 
     figure;
     plot(indices,errs,'.-','LineWidth',2);
-    
+
+    figure;
+    hold on;
+    plot(1:nKinect, mocapPos(:,1), 1:nKinect, kinOut(:,1), 'LineWidth',2);
+    legend('Mocap','Kinect');
+    hold off;
+
 elseif mode == 1
     % Baxter Calibration Mode
     [~,baxterData] = parseBaxter(sprintf('%sEE',fileName));
     [~,mocapData] = parseOptitrack(sprintf('%s.csv',fileName));
 
     offset = 5;
-    
+
     baxterData = baxterData(1:offset:end,:);
 
     mocapT = mocapData(:,2);
