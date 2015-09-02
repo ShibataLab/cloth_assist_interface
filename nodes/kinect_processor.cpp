@@ -15,8 +15,13 @@
 // ROS headers
 #include <ros/ros.h>
 #include <rosbag/bag.h>
+#include <rosbag/view.h>
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/CameraInfo.h>
+
+// Boost headers
+#include <boost/foreach.hpp>
+#define foreach BOOST_FOREACH
 
 // ROS messaging filters
 #include <message_filters/subscriber.h>
@@ -46,9 +51,11 @@ int main(int argc, char **argv)
   // selecting default topic names when the options are not provided
   std::string topicType = "sd";
   std::string ns = K2_DEFAULT_NS;
-  std::string fileName = "kinect";
   std::string topicColor = K2_TOPIC_SD K2_TOPIC_IMAGE_COLOR K2_TOPIC_IMAGE_RECT;
   std::string topicDepth = K2_TOPIC_SD K2_TOPIC_IMAGE_DEPTH K2_TOPIC_IMAGE_RECT;
+
+  std::string flag = "y";
+  std::string fileName = "default";
 
   // parsing command line arguments
   for(size_t i = 1; i < (size_t)argc; ++i)
@@ -86,6 +93,12 @@ int main(int argc, char **argv)
       topicColor = K2_TOPIC_SD K2_TOPIC_IMAGE_COLOR K2_TOPIC_IMAGE_RECT;
       topicDepth = K2_TOPIC_SD K2_TOPIC_IMAGE_DEPTH K2_TOPIC_IMAGE_RECT;
     }
+
+    // other option can only be the fileName
+    else
+    {
+      fileName = param;
+    }
   }
 
   // initializing color and depth topic names
@@ -96,37 +109,43 @@ int main(int argc, char **argv)
   std::cout << "topic depth: " << topicDepth << std::endl;
   std::cout << "topic camera info: " << topicCameraInfo << std::endl;
 
-  // start running processor instance
-  std::cout << "starting recorder..." << std::endl;
-  recorder.run();
+  std::vector<std::string> topics;
+  topics.push_back(topicColor);
+  topics.push_back(topicDepth);
+  topics.push_back(topicCameraInfo);
+
+  rosbag::Bag bag;
+  bag.open(fileName, rosbag::bagmode::Read);
+  rosbag::View view(bag, rosbag::TopicQuery(topics));
+
+  foreach(rosbag::MessageInstance const m, view)
+  {
+      ros::Time time = m.getTime();
+      std::cout << "Read time: " << time << std::endl;
+
+      sensor_msgs::Image::ConstPtr image = m.instantiate<sensor_msgs::Image>();
+      if (image != NULL)
+      {
+        if (image->encoding == "bgr8")
+          std::cout << "Read color image" << std::endl;
+        if (image->encoding == "16UC1")
+          std::cout << "Read depth image" << std::endl;
+      }
+
+      sensor_msgs::CameraInfo::ConstPtr cameraInfo = m.instantiate<sensor_msgs::CameraInfo>();
+      if (cameraInfo != NULL)
+          std::cout << "Read camera info" << std::endl;
+
+      std::cout << "Proceed? y/n" << std::endl;
+      std::cin >> flag;
+
+      if (flag == "n" || flag == "N")
+        break;
+  }
+
+  bag.close();
 
   // clean shutdown
   ros::shutdown();
   return 0;
 }
-
-
-
-
-
-rosbag::Bag bag;
-bag.open("test.bag", rosbag::bagmode::Read);
-
-std::vector<std::string> topics;
-topics.push_back(std::string("chatter"));
-topics.push_back(std::string("numbers"));
-
-rosbag::View view(bag, rosbag::TopicQuery(topics));
-
-foreach(rosbag::MessageInstance const m, view)
-{
-    std_msgs::String::ConstPtr s = m.instantiate<std_msgs::String>();
-    if (s != NULL)
-        ASSERT_EQ(s->data, std::string("foo"));
-
-    std_msgs::Int32::ConstPtr i = m.instantiate<std_msgs::Int32>();
-    if (i != NULL)
-        ASSERT_EQ(i->data, 42);
-}
-
-bag.close();
