@@ -119,43 +119,37 @@ int main(int argc, char **argv)
   bag.open(fileName, rosbag::bagmode::Read);
   rosbag::View view(bag, rosbag::TopicQuery(topics));
 
+  int frame = 0;
   ros::Time time;
-  std::string type1, type2, type3;
-  for (rosbag::View::iterator iter = view.begin(); iter != view.end(); ++iter)
+  std::string type;
+  rosbag::View::iterator iter = view.begin();
+
+  while(iter != view.end())
   {
-    rosbag::MessageInstance const m1 = *iter;
-    ++iter;
-    rosbag::MessageInstance const m2 = *iter;
-    ++iter;
-    rosbag::MessageInstance const m3 = *iter;
+    for (int i = 0; i < 3; i++)
+    {
+      rosbag::MessageInstance const m = *iter;
 
-    time = m1.getTime();
-    std::cout << "Read time: " << time << std::endl;
+      if (i == 0)
+        time = m.getTime();
 
-    type1 = m1.getDataType();
-    type2 = m2.getDataType();
-    type3 = m3.getDataType();
+      type = m.getDataType();
+      if (type == "sensor_msgs/Image")
+      {
+        sensor_msgs::Image::ConstPtr image = m.instantiate<sensor_msgs::Image>();
+        if (image->encoding == "bgr8")
+          sensor_msgs::Image::ConstPtr color = image;
+        if (image->encoding == "16UC1")
+          sensor_msgs::Image::ConstPtr depth = image;
+      }
+      else
+        sensor_msgs::CameraInfo::ConstPtr cameraInfo = m.instantiate<sensor_msgs::CameraInfo>();
 
-    std::cout << type1 << " " << type2 << " " << type3 << std::endl;
+      ++iter;
+    }
 
-    // sensor_msgs::Image::ConstPtr image = m.instantiate<sensor_msgs::Image>();
-    // if (image != NULL)
-    // {
-    //   if (image->encoding == "bgr8")
-    //     std::cout << "Read color image" << std::endl;
-    //   if (image->encoding == "16UC1")
-    //     std::cout << "Read depth image" << std::endl;
-    // }
-    //
-    //   sensor_msgs::CameraInfo::ConstPtr cameraInfo = m.instantiate<sensor_msgs::CameraInfo>();
-    //   if (cameraInfo != NULL)
-    //       std::cout << "Read camera info" << std::endl;
-
-    std::cout << "Proceed? y/n" << std::endl;
-    std::cin >> flag;
-
-    if (flag == "n" || flag == "N")
-      break;
+    std::cout << "Frame: " << frame << ", Time: " << time << std::endl;
+    frame++;
   }
 
   bag.close();
