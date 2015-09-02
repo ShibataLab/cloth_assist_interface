@@ -16,6 +16,7 @@
 #include <ros/ros.h>
 #include <rosbag/bag.h>
 #include <rosbag/view.h>
+#include <rosbag/query.h>
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/CameraInfo.h>
 
@@ -118,29 +119,43 @@ int main(int argc, char **argv)
   bag.open(fileName, rosbag::bagmode::Read);
   rosbag::View view(bag, rosbag::TopicQuery(topics));
 
-  foreach(rosbag::MessageInstance const m, view)
+  ros::Time time;
+  std::string type1, type2, type3;
+  for (rosbag::View::iterator iter = view.begin(); iter != view.end(); ++iter)
   {
-      ros::Time time = m.getTime();
-      std::cout << "Read time: " << time << std::endl;
+    rosbag::MessageInstance const m1 = *iter;
+    ++iter;
+    rosbag::MessageInstance const m2 = *iter;
+    ++iter;
+    rosbag::MessageInstance const m3 = *iter;
 
-      sensor_msgs::Image::ConstPtr image = m.instantiate<sensor_msgs::Image>();
-      if (image != NULL)
-      {
-        if (image->encoding == "bgr8")
-          std::cout << "Read color image" << std::endl;
-        if (image->encoding == "16UC1")
-          std::cout << "Read depth image" << std::endl;
-      }
+    time = m1.getTime();
+    std::cout << "Read time: " << time << std::endl;
 
-      sensor_msgs::CameraInfo::ConstPtr cameraInfo = m.instantiate<sensor_msgs::CameraInfo>();
-      if (cameraInfo != NULL)
-          std::cout << "Read camera info" << std::endl;
+    type1 = m1.getDataType();
+    type2 = m2.getDataType();
+    type3 = m3.getDataType();
 
-      std::cout << "Proceed? y/n" << std::endl;
-      std::cin >> flag;
+    std::cout << type1 << " " << type2 << " " << type3 << std::endl;
 
-      if (flag == "n" || flag == "N")
-        break;
+    // sensor_msgs::Image::ConstPtr image = m.instantiate<sensor_msgs::Image>();
+    // if (image != NULL)
+    // {
+    //   if (image->encoding == "bgr8")
+    //     std::cout << "Read color image" << std::endl;
+    //   if (image->encoding == "16UC1")
+    //     std::cout << "Read depth image" << std::endl;
+    // }
+    //
+    //   sensor_msgs::CameraInfo::ConstPtr cameraInfo = m.instantiate<sensor_msgs::CameraInfo>();
+    //   if (cameraInfo != NULL)
+    //       std::cout << "Read camera info" << std::endl;
+
+    std::cout << "Proceed? y/n" << std::endl;
+    std::cin >> flag;
+
+    if (flag == "n" || flag == "N")
+      break;
   }
 
   bag.close();
