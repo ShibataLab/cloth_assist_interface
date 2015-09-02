@@ -1,11 +1,28 @@
-// kinect_recorder.cpp: Program to subscribe to kinect2 topics and synchronize them
-// to save to a ros bag file.
-// Requirements: recorder class files and synchronizer client running for control
+// kinect_processor.cpp: Program to read rosbag files and process kinect2 data
+// Requirements: rosbag file as input
 // Author: Nishanth Koganti
-// Date: 2015/8/22
+// Date: 2015/9/2
 
-// all headers recorded in class definition header
-# include <recorder.h>
+// CPP headers
+#include <cmath>
+#include <string>
+#include <vector>
+#include <stdio.h>
+#include <sstream>
+#include <stdlib.h>
+#include <iostream>
+
+// ROS headers
+#include <ros/ros.h>
+#include <rosbag/bag.h>
+#include <sensor_msgs/Image.h>
+#include <sensor_msgs/CameraInfo.h>
+
+// ROS messaging filters
+#include <message_filters/subscriber.h>
+
+// kinect2 bridge header
+#include <kinect2_bridge/kinect2_definitions.h>
 
 // help function
 void help(const std::string &path)
@@ -17,7 +34,7 @@ void help(const std::string &path)
 int main(int argc, char **argv)
 {
   // create ros node with a random name to avoid conflicts
-  ros::init(argc, argv, "kinect_recorder", ros::init_options::AnonymousName);
+  ros::init(argc, argv, "kinect_processor", ros::init_options::AnonymousName);
 
   // check for failure
   if(!ros::ok())
@@ -74,11 +91,10 @@ int main(int argc, char **argv)
   // initializing color and depth topic names
   topicColor = "/" + ns + topicColor;
   topicDepth = "/" + ns + topicDepth;
+  std::string topicCameraInfo = topicDepth.substr(0, topicDepth.rfind('/')) + "/camera_info";
   std::cout << "topic color: " << topicColor << std::endl;
   std::cout << "topic depth: " << topicDepth << std::endl;
-
-  // create processor with parsed command line parameters
-  Recorder recorder(topicColor, topicDepth);
+  std::cout << "topic camera info: " << topicCameraInfo << std::endl;
 
   // start running processor instance
   std::cout << "starting recorder..." << std::endl;
