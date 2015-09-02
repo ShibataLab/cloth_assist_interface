@@ -20,6 +20,16 @@
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/CameraInfo.h>
 
+// OpenCV headers
+#include <opencv2/opencv.hpp>
+#include <cv_bridge/cv_bridge.h>
+
+// PCL headers
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+#include <pcl_ros/point_cloud.h>
+#include <pcl/visualization/cloud_viewer.h>
+
 // Boost headers
 #include <boost/foreach.hpp>
 #define foreach BOOST_FOREACH
@@ -29,6 +39,16 @@
 
 // kinect2 bridge header
 #include <kinect2_bridge/kinect2_definitions.h>
+
+void readImage(const sensor_msgs::Image::ConstPtr msgImage, cv::Mat &image)
+{
+  // obtain image data and encoding from sensor msg
+  cv_bridge::CvImageConstPtr pCvImage;
+  pCvImage = cv_bridge::toCvShare(msgImage, msgImage->encoding);
+
+  // copy data to the Mat image
+  pCvImage->image.copyTo(image);
+}
 
 // help function
 void help(const std::string &path)
@@ -119,6 +139,11 @@ int main(int argc, char **argv)
   bag.open(fileName, rosbag::bagmode::Read);
   rosbag::View view(bag, rosbag::TopicQuery(topics));
 
+  // opencv variables
+  cv::Mat color, depth;
+  cv::namedWindow("Color",0);
+  cv::namedWindow("Depth",0);
+
   int frame = 0;
   ros::Time time;
   std::string type;
@@ -126,27 +151,30 @@ int main(int argc, char **argv)
 
   while(iter != view.end())
   {
+    time = (*iter).getTime();
+
     for (int i = 0; i < 3; i++)
     {
       rosbag::MessageInstance const m = *iter;
-
-      if (i == 0)
-        time = m.getTime();
 
       type = m.getDataType();
       if (type == "sensor_msgs/Image")
       {
         sensor_msgs::Image::ConstPtr image = m.instantiate<sensor_msgs::Image>();
         if (image->encoding == "bgr8")
-          sensor_msgs::Image::ConstPtr color = image;
-        if (image->encoding == "16UC1")
-          sensor_msgs::Image::ConstPtr depth = image;
+          readImage(image, color);
+        else if (image->encoding == "16UC1")
+          readImage(image, depth);
       }
       else
         sensor_msgs::CameraInfo::ConstPtr cameraInfo = m.instantiate<sensor_msgs::CameraInfo>();
 
       ++iter;
     }
+
+    cv::imshow("Color", color);
+    cv::imshow("Depth", depth);
+    cv::waitKey(30);
 
     std::cout << "Frame: " << frame << ", Time: " << time << std::endl;
     frame++;
