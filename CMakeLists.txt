@@ -69,7 +69,7 @@ target_link_libraries(cloth_recorder ${PCL_LIBRARIES} ${catkin_LIBRARIES} ${Open
 add_executable(kinect_recorder nodes/kinect_recorder.cpp src/recorder.cpp)
 target_link_libraries(kinect_recorder ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} -lzmq)
 
-add_executable(kinect_processor nodes/kinect_processor.cpp)
+add_executable(kinect_processor nodes/kinect_processor.cpp src/processor.cpp)
 target_link_libraries(kinect_processor ${PCL_LIBRARIES} ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
 add_executable(marker_recorder nodes/marker_recorder.cpp)
