@@ -3,56 +3,163 @@
 // Author: Nishanth Koganti
 // Date: 2015/9/7
 
-// tracker.cpp: Tracker class function declaration for tracking clothing articles
-// using the cam shift algorithm and obtain point cloud using pcl functions
-// Requirements: relies on the use of opencv and pcl
-// Author: Nishanth Koganti
-// Date: 2015/9/4
-
 // TODO:
 // 1) Improve point cloud processing using different filters
 
-#include <tracker.h>
+#include <processor.h>
 
 // class constructor
-Tracker::Tracker()
+Processor::Processor(std::string fileName, std::string topicColor, std::string topicDepth, std::string topicCameraInfo, std::string topicType, bool videoMode, bool cloudMode)
+  : m_videoMode(videoMode), m_cloudMode(cloudMode)
 {
+  // initialize select object flag
   m_selectObject = false;
-  cloudBag.open("cloud.bag", rosbag::bagmode::Write);
+
+  // create char file names
+  char bagName[200], cloudBagName[200], videoName[200];
+
+  // open the bag file
+  sprintf(bagName, "%s.bag", fileName.c_str());
+  m_bag.open(bagName, rosbag::bagmode::Read);
+
+  // create vector of topics for querying
+  std::vector<std::string> topics;
+  topics.push_back(topicColor);
+  topics.push_back(topicDepth);
+  topics.push_back(topicCameraInfo);
+
+  // create view instance for rosbag parsing
+  m_view = new rosbag::View(m_bag, rosbag::TopicQuery(topics));
+
+  // set the width and height parameters for cloth tracking functions
+  if(topicType == "hd")
+  {
+    m_height = 1080;
+    m_width = 1920;
+  }
+  else if(topicType == "qhd")
+  {
+    m_height = 540;
+    m_width = 960;
+  }
+  else if(topicType == "sd")
+  {
+    m_height = 424;
+    m_width = 512;
+  }
+
+  // cloudMode
+  if (m_cloudMode)
+  {
+    sprintf(cloudBagName, "%sCloud.bag", fileName.c_str());
+    m_cloudBag.open("cloud.bag", rosbag::bagmode::Write);
+  }
+
+  // videoMode
+  if (m_videoMode)
+  {
+    sprintf(videoName, "%s.avi", fileName.c_str());
+    m_writer.open (videoName, CV_FOURCC('D','I','V','X'), FPS, cv::Size (m_width,m_height), true);
+  }
 }
 
 // class destructor
-Tracker::~Tracker()
+Processor::~Processor()
 {
-  cloudBag.close();
 }
 
-// class setter
-void Tracker::setImages(cv::Mat &color, cv::Mat &depth, ros::Time time)
+// write run function
+void Processor::run()
 {
-  // set the class variables from input images
-  m_time = time;
-  color.copyTo(m_color);
-  depth.copyTo(m_depth);
+  // opencv variables
+  cv::Mat roi;
+  cv::namedWindow("Output", 1);
+  cv::namedWindow("Backproj", 1);
 
-  // perform cloud extraction on setting images
-  cloudExtract();
-}
+  // start parsing rosbag
+  std::string type;
+  std::string topicCloud = "/cloth/cloud";
+  rosbag::View::iterator iter = m_view->begin();
 
-// class getter
-void Tracker::getOutput(cv::Mat &output, cv::Mat &backproj)
-{
-  // provide output images from class
-  m_output.copyTo(output);
-  m_backproj.copyTo(backproj);
+  m_time = (*iter).getTime();
+
+  // read first set of images for calibration
+  for (int i = 0; i < 3; i++)
+  {
+    rosbag::MessageInstance const m = *iter;
+
+    type = m.getDataType();
+    if (type == "sensor_msgs/Image")
+    {
+      sensor_msgs::Image::ConstPtr image = m.instantiate<sensor_msgs::Image>();
+      if (image->encoding == "bgr8")
+        readImage(image, m_color);
+      else if (image->encoding == "16UC1")
+        readImage(image, m_depth);
+    }
+    else
+      m_cameraInfo = m.instantiate<sensor_msgs::CameraInfo>();
+
+    ++iter;
+  }
+
+  // peform cloth calibration
+  clothCalibrate();
+
+  while(iter != m_view->end())
+  {
+    m_time = (*iter).getTime();
+
+    for (int i = 0; i < 3; i++)
+    {
+      rosbag::MessageInstance const m = *iter;
+
+      type = m.getDataType();
+      if (type == "sensor_msgs/Image")
+      {
+        sensor_msgs::Image::ConstPtr image = m.instantiate<sensor_msgs::Image>();
+        if (image->encoding == "bgr8")
+          readImage(image, m_color);
+        else if (image->encoding == "16UC1")
+          readImage(image, m_depth);
+      }
+      else
+        m_cameraInfo = m.instantiate<sensor_msgs::CameraInfo>();
+
+      ++iter;
+    }
+
+    cloudExtract();
+
+    if (m_videoMode)
+      m_writer.write(m_output);
+
+    if (m_cloudMode)
+      m_cloudBag.write(topicCloud, m_time, *m_cloud);
+
+    cv::imshow("Output", m_output);
+    cv::imshow("Backproj", m_backproj);
+    cv::waitKey(20);
+  }
+
+  // clean exit
+  m_bag.close();
+  m_writer.release();
+
+  if (m_cloudMode)
+    m_cloudBag.close();
+
 }
 
 // function to obtain cloth calibration values
-void Tracker::clothCalibrate(cv::Mat &color, cv::Mat &depth)
+void Processor::clothCalibrate()
 {
 	// opencv initialization
 	char key = 0;
-	cv::Mat disp, hsv, mask, hue;
+	cv::Mat disp, hsv, mask, hue, color;
+
+  // get color image
+  m_color.copyTo(color);
 
 	// gui initialization
 	cv::namedWindow("CamShift", CV_WINDOW_AUTOSIZE);
@@ -112,7 +219,7 @@ void Tracker::clothCalibrate(cv::Mat &color, cv::Mat &depth)
 }
 
 // function to display images
-void Tracker::cloudExtract()
+void Processor::cloudExtract()
 {
   // variable initialization
   cv::Mat roi;
@@ -122,13 +229,10 @@ void Tracker::cloudExtract()
 
   // function to create point cloud and obtain
   createCloud(roi);
-
-  // write point cloud to rosbag file
-  cloudBag.write("/kinect2/cloud", m_time, *(this->m_cloud));
 }
 
 // function to get image roi from color and depth images
-void Tracker::createROI(cv::Mat &roi)
+void Processor::createROI(cv::Mat &roi)
 {
   // opencv initialization
   cv::Mat color, depth, backproj;
@@ -190,7 +294,7 @@ void Tracker::createROI(cv::Mat &roi)
 }
 
 // function to create point cloud from extracted ROI
-void Tracker::createCloud(cv::Mat &roi)
+void Processor::createCloud(cv::Mat &roi)
 {
   // initialize cloud
   m_cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
@@ -207,43 +311,43 @@ void Tracker::createCloud(cv::Mat &roi)
   const float badPoint = std::numeric_limits<float>::quiet_NaN();
 
   // parallel processing of pixel values
-  #pragma omp parallel for
-  for(int r = 0; r < roi.rows; ++r)
-  {
-    // create row of Points
-    pcl::PointXYZ *itP = &m_cloud->points[r * roi.cols];
-
-    // get pointer to row in depth image
-    const cv::Vec3f *itD = roi.ptr< cv::Vec3f >(r);
-
-    // convert all the depth values in the depth image to Points in point cloud
-    for(size_t c = 0; c < (size_t)roi.cols; ++c, ++itP, ++itD)
-    {
-      float depthValue = (*itD).val[2];
-
-      // Check for invalid measurements
-      if(isnan(depthValue) || depthValue <= 0.001)
-      {
-        // set values to NaN for later processing
-        itP->x = itP->y = itP->z = badPoint;
-        continue;
-      }
-
-      // set the values for good points
-      itP->z = (*itD).val[2];
-      itP->x = (*itD).val[0];
-      itP->y = (*itD).val[1];
-    }
-  }
+  // #pragma omp parallel for
+  // for(int r = 0; r < roi.rows; ++r)
+  // {
+  //   // create row of Points
+  //   pcl::PointXYZ *itP = &m_cloud->points[r * roi.cols];
+  //
+  //   // get pointer to row in depth image
+  //   const cv::Vec3f *itD = roi.ptr< cv::Vec3f >(r);
+  //
+  //   // convert all the depth values in the depth image to Points in point cloud
+  //   for(size_t c = 0; c < (size_t)roi.cols; ++c, ++itP, ++itD)
+  //   {
+  //     float depthValue = (*itD).val[2];
+  //
+  //     // Check for invalid measurements
+  //     if(isnan(depthValue) || depthValue <= 0.001)
+  //     {
+  //       // set values to NaN for later processing
+  //       itP->x = itP->y = itP->z = badPoint;
+  //       continue;
+  //     }
+  //
+  //     // set the values for good points
+  //     itP->z = (*itD).val[2];
+  //     itP->x = (*itD).val[0];
+  //     itP->y = (*itD).val[1];
+  //   }
+  // }
 }
 
 // mouse click callback function for T-shirt color calibration
-void Tracker::onMouse(int event, int x, int y, int flags, void* param)
+void Processor::onMouse(int event, int x, int y, int flags, void* param)
 {
   // this line needs to be added if we want to access the class private parameters
   // within a static function
   // URL: http://stackoverflow.com/questions/14062501/giving-callback-function-access-to-class-data-members-in-c
-  Tracker* ptr = static_cast<Tracker*>(param);
+  Processor* ptr = static_cast<Processor*>(param);
 
 	if (ptr->m_selectObject)
 	{
@@ -267,131 +371,12 @@ void Tracker::onMouse(int event, int x, int y, int flags, void* param)
 	}
 }
 
-// flag for write mode
-bool writeMode = false;
-
-// selecting default topic names when the options are not provided
-std::string fileName = "kinect";
-
-// parse command line arguments
-for (int i = 0; i < argc; i++)
+void Processor::readImage(sensor_msgs::Image::ConstPtr msgImage, cv::Mat &image)
 {
-  std::string param = argv[i];
+  // obtain image data and encoding from sensor msg
+  cv_bridge::CvImageConstPtr pCvImage;
+  pCvImage = cv_bridge::toCvShare(msgImage, msgImage->encoding);
 
-  if (param == "write")
-    writeMode = true;
-  else
-    fileName = param;
+  // copy data to the Mat image
+  pCvImage->image.copyTo(image);
 }
-
-// create rosbag file and create rosbag view instance
-char bagName[200];
-
-std::string topicColor = "/kinect2/color";
-std::string topicDepth = "/kinect2/depth";
-
-std::vector<std::string> topics;
-topics.push_back(topicColor);
-topics.push_back(topicDepth);
-
-rosbag::Bag bag;
-sprintf(bagName, "%s.bag", fileName.c_str());
-bag.open(bagName, rosbag::bagmode::Read);
-rosbag::View view(bag, rosbag::TopicQuery(topics));
-
-// rosbag parse variables
-int frame = 0;
-ros::Time time;
-rosbag::View::iterator iter = view.begin();
-
-// opencv variables
-cv::Mat color, depth, output, backproj, roi;
-pcl::PointCloud< pcl::PointXYZ > cloud;
-
-// named windows
-cv::namedWindow("Output",1);
-cv::namedWindow("Backproj",1);
-
-// create instance of tracker class
-Tracker tracker;
-
-// get first pair of images for calibration
-for (int i = 0; i < topics.size(); i++)
-{
-  rosbag::MessageInstance const m = *iter;
-
-  sensor_msgs::Image::ConstPtr image = m.instantiate<sensor_msgs::Image>();
-  if (image->encoding == "bgr8")
-    readImage(image, color);
-  else if (image->encoding == "32FC3")
-    readImage(image, depth);
-
-  ++iter;
-}
-
-// perform calibration
-tracker.clothCalibrate(color, depth);
-
-// create video writer
-cv::VideoWriter writer;
-int width = depth.cols;
-int height = depth.rows;
-if (writeMode)
-{
-  writer.open ("output.avi", CV_FOURCC('D','I','V','X'), FPS, cv::Size (width/2,height/2), true );
-}
-
-cv::Rect rect;
-rect.x = width/4;
-rect.y = height/2 - 50;
-rect.width = width/2;
-rect.height = height/2;
-
-// create pcl cloud viewer
-pcl::visualization::CloudViewer viewer("Cloth Tracker");
-
-// main rosbag parse loop
-while(iter != view.end())
-{
-  // get time for msgs and pair of color and depth images
-  time = (*iter).getTime();
-
-  for (int i = 0; i < topics.size(); i++)
-  {
-    rosbag::MessageInstance const m = *iter;
-
-    sensor_msgs::Image::ConstPtr image = m.instantiate<sensor_msgs::Image>();
-    if (image->encoding == "bgr8")
-      readImage(image, color);
-    else if (image->encoding == "32FC3")
-      readImage(image, depth);
-
-    ++iter;
-  }
-
-  // process images and get output
-  tracker.setImages(color, depth, time);
-  tracker.getOutput(output, backproj);
-  roi = output(rect);
-
-  // show constructed point cloud
-  viewer.showCloud(tracker.m_cloud);
-
-  // write output image to videoWriter
-  if (writeMode)
-  {
-    writer.write(roi);
-  }
-
-  // display output images
-  cv::imshow("Output", roi);
-  cv::imshow("Backproj", backproj);
-  cv::waitKey(30);
-
-  std::cout << "Frame: " << frame << ", Time: " << time << std::endl;
-  frame++;
-}
-
-// close instances
-bag.close();
-writer.release();
