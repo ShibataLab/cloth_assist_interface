@@ -5,7 +5,7 @@
 
 // TODO:
 // 0) Add two modes in the synchronizer depending on stopping method (DONE)
-// 1) Improve method to initialize IP addresses
+// 1) Improve method to initialize IP addresses - QtInterface?
 // 2) Maybe QT Interface for all the questions asked?
 
 // headers

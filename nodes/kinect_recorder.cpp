@@ -27,7 +27,7 @@ int main(int argc, char **argv)
 
   // ns = kinect2
   // selecting default topic names when the options are not provided
-  std::string topicType = "sd";
+  std::string topicType = "qhd";
   std::string ns = K2_DEFAULT_NS;
   std::string fileName = "kinect";
   std::string topicColor = K2_TOPIC_SD K2_TOPIC_IMAGE_COLOR K2_TOPIC_IMAGE_RECT;

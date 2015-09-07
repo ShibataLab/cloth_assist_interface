@@ -6,6 +6,7 @@
 
 // TODO:
 // 1) Improve fps for recorder program (currently around 10)
+// 2) Qt interface to change running mode?
 
 // main headers
 #include <fstream>
