@@ -73,16 +73,23 @@ class Processor
     int m_width, m_height;
     cv::VideoWriter m_writer;
     cv::Rect m_selection, m_window;
+    cv::Mat m_lookupY, m_lookupX, m_cameraMatrix;
     cv::Mat m_color, m_depth, m_hist, m_output, m_backproj;
 
     // pcl initialization
     pcl::PointCloud<pcl::PointXYZ>::Ptr m_cloud;
 
-    // function to obtain cloth calibration values
-    void clothCalibrate();
+    // function to create lookup table for obtaining x,y,z values
+    void createLookup();
 
     // function to display images
     void cloudExtract();
+
+    // function to obtain cloth calibration values
+    void clothCalibrate();
+
+    // function to obtain camera info from message filter msgs
+    void readCameraInfo();
 
     // function to get ROI from color and depth images
     void createROI(cv::Mat &roi);
@@ -90,11 +97,11 @@ class Processor
     // function to build point cloud from roi
     void createCloud(cv::Mat &roi);
 
-    // mouse click callback function for T-shirt color calibration
-    static void onMouse(int event, int x, int y, int flags, void* param);
-
     // function to obtain cv::Mat from sensor_msgs
     void readImage(sensor_msgs::Image::ConstPtr msgImage, cv::Mat &image);
+
+    // mouse click callback function for T-shirt color calibration
+    static void onMouse(int event, int x, int y, int flags, void* param);
 };
 
 #endif

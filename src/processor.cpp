@@ -15,6 +15,9 @@ Processor::Processor(std::string fileName, std::string topicColor, std::string t
   // initialize select object flag
   m_selectObject = false;
 
+  // create matrices for intrinsic parameters
+  m_cameraMatrix = cv::Mat::zeros(3, 3, CV_64F);
+
   // create char file names
   char bagName[200], cloudBagName[200], videoName[200];
 
@@ -52,7 +55,7 @@ Processor::Processor(std::string fileName, std::string topicColor, std::string t
   if (m_cloudMode)
   {
     sprintf(cloudBagName, "%sCloud.bag", fileName.c_str());
-    m_cloudBag.open("cloud.bag", rosbag::bagmode::Write);
+    m_cloudBag.open(cloudBagName, rosbag::bagmode::Write);
   }
 
   // videoMode
@@ -80,6 +83,9 @@ void Processor::run()
   std::string type;
   std::string topicCloud = "/cloth/cloud";
   rosbag::View::iterator iter = m_view->begin();
+
+  // create pcl cloud viewer
+  pcl::visualization::CloudViewer viewer("Cloth Tracker");
 
   m_time = (*iter).getTime();
 
@@ -137,6 +143,7 @@ void Processor::run()
     if (m_cloudMode)
       m_cloudBag.write(topicCloud, m_time, *m_cloud);
 
+    viewer.showCloud(m_cloud);
     cv::imshow("Output", m_output);
     cv::imshow("Backproj", m_backproj);
     cv::waitKey(20);
@@ -307,38 +314,48 @@ void Processor::createCloud(cv::Mat &roi)
   m_cloud->is_dense = false;
   m_cloud->points.resize(m_cloud->height * m_cloud->width);
 
+  // create lookup tables
+  readCameraInfo();
+
+  createLookup();
+
   // variables
   const float badPoint = std::numeric_limits<float>::quiet_NaN();
 
   // parallel processing of pixel values
-  // #pragma omp parallel for
-  // for(int r = 0; r < roi.rows; ++r)
-  // {
-  //   // create row of Points
-  //   pcl::PointXYZ *itP = &m_cloud->points[r * roi.cols];
-  //
-  //   // get pointer to row in depth image
-  //   const cv::Vec3f *itD = roi.ptr< cv::Vec3f >(r);
-  //
-  //   // convert all the depth values in the depth image to Points in point cloud
-  //   for(size_t c = 0; c < (size_t)roi.cols; ++c, ++itP, ++itD)
-  //   {
-  //     float depthValue = (*itD).val[2];
-  //
-  //     // Check for invalid measurements
-  //     if(isnan(depthValue) || depthValue <= 0.001)
-  //     {
-  //       // set values to NaN for later processing
-  //       itP->x = itP->y = itP->z = badPoint;
-  //       continue;
-  //     }
-  //
-  //     // set the values for good points
-  //     itP->z = (*itD).val[2];
-  //     itP->x = (*itD).val[0];
-  //     itP->y = (*itD).val[1];
-  //   }
-  // }
+  #pragma omp parallel for
+  for(int r = 0; r < roi.rows; ++r)
+  {
+    // create row of Points
+    pcl::PointXYZ *itP = &m_cloud->points[r * roi.cols];
+
+    // get pointer to row in depth image
+    const uint16_t *itD = roi.ptr<uint16_t>(r);
+
+    // get the x and y values
+    const float y = m_lookupY.at<float>(0, m_window.y+r);
+    const float *itX = m_lookupX.ptr<float>();
+    itX = itX + m_window.x;
+
+    // convert all the depth values in the depth image to Points in point cloud
+    for(size_t c = 0; c < (size_t)roi.cols; ++c, ++itP, ++itD, ++itX)
+    {
+      register const float depthValue = *itD / 1000.0f;
+
+      // Check for invalid measurements
+      if(isnan(depthValue) || depthValue <= 0.001)
+      {
+        // set values to NaN for later processing
+        itP->x = itP->y = itP->z = badPoint;
+        continue;
+      }
+
+      // set the values for good points
+      itP->z = depthValue;
+      itP->x = *itX * depthValue;
+      itP->y = y * depthValue;
+    }
+  }
 }
 
 // mouse click callback function for T-shirt color calibration
@@ -379,4 +396,46 @@ void Processor::readImage(sensor_msgs::Image::ConstPtr msgImage, cv::Mat &image)
 
   // copy data to the Mat image
   pCvImage->image.copyTo(image);
+}
+
+// function to obtain camera info from message filter msgs
+void Processor::readCameraInfo()
+{
+  // get pointer for first element in cameraMatrix
+  double *itC = m_cameraMatrix.ptr<double>(0, 0);
+
+  // create for loop to copy complete data
+  for(size_t i = 0; i < 9; ++i, ++itC)
+  {
+    *itC = m_cameraInfo->K[i];
+  }
+}
+
+// function to create lookup table for obtaining x,y,z values
+void Processor::createLookup()
+{
+  // get the values from the camera matrix of intrinsic parameters
+  const float fx = 1.0f / m_cameraMatrix.at<double>(0, 0);
+  const float fy = 1.0f / m_cameraMatrix.at<double>(1, 1);
+  const float cx = m_cameraMatrix.at<double>(0, 2);
+  const float cy = m_cameraMatrix.at<double>(1, 2);
+
+  // float iterator
+  float *it;
+
+  // lookup table for y pixel locations
+  m_lookupY = cv::Mat(1, m_height, CV_32F);
+  it = m_lookupY.ptr<float>();
+  for(size_t r = 0; r < m_height; ++r, ++it)
+  {
+    *it = (r - cy) * fy;
+  }
+
+  // lookup table for x pixel locations
+  m_lookupX = cv::Mat(1, m_width, CV_32F);
+  it = m_lookupX.ptr<float>();
+  for(size_t c = 0; c < m_width; ++c, ++it)
+  {
+    *it = (c - cx) * fx;
+  }
 }
