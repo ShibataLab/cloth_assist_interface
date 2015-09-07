@@ -26,10 +26,14 @@ int main(int argc, char **argv)
     return 0;
   }
 
-  bool writeVideo = false;
-  bool writeCloud = false;
+  // default values of parameters for processor class
+  bool videoMode = false;
+  bool cloudMode = false;
+  std::string ns = K2_DEFAULT_NS;
   std::string fileName = "default";
-  std::string topicColor, topicDepth, topicCameraInfo;
+  std::string topicType, topicColor, topicDepth, topicCameraInfo;
+  topicColor = K2_TOPIC_QHD K2_TOPIC_IMAGE_COLOR K2_TOPIC_IMAGE_RECT;
+  topicDepth = K2_TOPIC_QHD K2_TOPIC_IMAGE_DEPTH K2_TOPIC_IMAGE_RECT;
 
   // parsing command line arguments
   for(size_t i = 1; i < (size_t)argc; ++i)
@@ -81,13 +85,13 @@ int main(int argc, char **argv)
       fileName = param;
   }
 
-  // initializing color and depth topic names
+  // initializing color and depth topic names with kinect2 header
   topicColor = "/" + ns + topicColor;
   topicDepth = "/" + ns + topicDepth;
   topicCameraInfo = topicDepth.substr(0, topicDepth.rfind('/')) + "/camera_info";
 
   // create instance of processor class
-  Processor processor(fileName, topicColor, topicDepth, topicCameraInfo, videoMode, cloudMode);
+  Processor processor(fileName, topicColor, topicDepth, topicCameraInfo, topicType, videoMode, cloudMode);
 
   // run the processor class to parse rosbag file and get results
   processor.run();
