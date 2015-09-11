@@ -69,7 +69,9 @@ void Recorder::run()
   			std::cout << "[ZMQ] Received filename" << std::endl;
 
         // open a new bag file
-        bag.open(fileName, rosbag::bagmode::Write);
+        char bagName[200];
+        sprintf(bagName, "%s.bag", fileName.c_str());
+        bag.open(bagName, rosbag::bagmode::Write);
         std::cout << "[ROSBAG] Opening ROS bag" << std::endl;
 
         // wait for start recording message from client
