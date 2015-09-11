@@ -84,6 +84,9 @@ target_link_libraries(kinect_mocap_sync -lzmq)
 add_executable(baxter_mocap_sync nodes/baxter_mocap_sync.cpp)
 target_link_libraries(baxter_mocap_sync -lzmq)
 
+add_executable(sync nodes/sync.cpp)
+target_link_libraries(sync -lzmq)
+
 ## Install
 install(DIRECTORY include/ DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION} USE_SOURCE_PERMISSIONS)
 install(DIRECTORY scripts/ DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION} USE_SOURCE_PERMISSIONS)
