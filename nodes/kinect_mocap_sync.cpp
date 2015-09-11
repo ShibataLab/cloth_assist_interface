@@ -18,7 +18,7 @@
 #include <zmq.hpp>
 
 // preprocessor directives
-#define MOCAPIP "tcp://192.168.0.5:5555"
+#define MOCAPIP "tcp://192.168.0.6:5555"
 #define KINECTIP "tcp://localhost:5555"
 
 // namespace declarations
@@ -55,7 +55,7 @@ int main(int argc, char** argv)
 		cout << "Start new trial? Y/N" << endl;
 		cin >> c;
 
-		if (c == 'N')
+		if (c == 'N' || c == 'n')
 		{
 			// stop both kinect and mocap servers
 			message_t stopServerMocap(10);
@@ -125,8 +125,8 @@ int main(int argc, char** argv)
 			cout << "Start Recording with Delay? Y/N" << endl;
 			cin >> Message;
 
-			if (Message == "Y")
-				sleep(6);
+			if (Message == "Y" || Message == "y")
+				sleep(15);
 
 			// start recording request
 			message_t startRequestMocap(14);

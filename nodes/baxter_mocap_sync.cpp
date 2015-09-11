@@ -17,7 +17,7 @@
 #include <zmq.hpp>
 
 // preprocessor directives
-#define MOCAPIP "tcp://192.168.0.5:5555"
+#define MOCAPIP "tcp://192.168.0.6:5555"
 #define BAXTERIP "tcp://localhost:5555"
 
 // namespace declarations
