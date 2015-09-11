@@ -86,7 +86,7 @@ def main():
     # if no optional argument is provided then in sync mode
     else:
         # zmq initialization
-        kinectPort = "5555"
+        kinectPort = "5565"
         playerPort = "5556"
 
         context = zmq.Context()

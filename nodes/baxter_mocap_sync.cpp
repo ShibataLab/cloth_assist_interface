@@ -149,8 +149,8 @@ int main(int argc, char** argv)
 			// stop recording request obtained from baxter record server
 			message_t baxterSignal;
 			baxterSocket.recv(&baxterSignal);
-
 			Message = string(static_cast<char *>(baxterSignal.data()), baxterSignal.size());
+
 			if (Message == "StoppedRecording")
 			{
 				cout << "[ZMQ Baxter] Received StoppedRecording" << endl;
