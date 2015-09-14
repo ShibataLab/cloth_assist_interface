@@ -1,9 +1,9 @@
 // kinect_processor.cpp: Program to read rosbag files and process kinect2 data
 // Requirements: rosbag file as input
 // Author: Nishanth Koganti
-// Date: 2015/9/2
+// Date: 2015/9/14
 
-// include processor class
+// header files
 #include <processor.h>
 
 // help function
@@ -29,9 +29,10 @@ int main(int argc, char **argv)
   // default values of parameters for processor class
   bool videoMode = false;
   bool cloudMode = false;
+  std::string topicType = "qhd";
   std::string ns = K2_DEFAULT_NS;
   std::string fileName = "default";
-  std::string topicType, topicColor, topicDepth, topicCameraInfo;
+  std::string topicColor, topicDepth, topicCameraInfo;
   topicColor = K2_TOPIC_QHD K2_TOPIC_IMAGE_COLOR K2_TOPIC_IMAGE_RECT;
   topicDepth = K2_TOPIC_QHD K2_TOPIC_IMAGE_DEPTH K2_TOPIC_IMAGE_RECT;
 

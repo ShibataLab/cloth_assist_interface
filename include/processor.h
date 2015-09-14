@@ -10,12 +10,14 @@
 #define __TRACKER_H__
 
 // CPP headers
+#include <cmath>
 #include <string>
 #include <vector>
 #include <stdio.h>
 #include <sstream>
 #include <stdlib.h>
 #include <iostream>
+#include <algorithm>
 
 // ROS headers
 #include <ros/ros.h>
