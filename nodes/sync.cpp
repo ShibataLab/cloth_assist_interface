@@ -17,7 +17,7 @@
 #include <zmq.hpp>
 
 // preprocessor directives
-#define MOCAPIP "tcp://192.168.0.6:5555"
+#define MOCAPIP "tcp://192.168.0.3:5555"
 #define KINECTIP "tcp://localhost:5555"
 #define BAXTERIP "tcp://localhost:5565"
 
@@ -127,6 +127,15 @@ int main(int argc, char** argv)
 				continue;
 			}
 
+			// send baxter playback fileName
+      cout << "Baxter Playback Filename?" << endl;
+			cin >> Message;
+
+			message_t fileNamePlayback(Message.length());
+			memcpy((void *)fileNamePlayback.data(), Message.c_str(), Message.length());
+			baxterSocket.send(fileNamePlayback);
+			cout << "[ZMQ Baxter] Sent playback filename" << endl;
+
 			// Send record fileName
 			cout << "Record Filename?" << endl;
 			cin >> Message;
@@ -166,7 +175,7 @@ int main(int argc, char** argv)
       // send baxter message
 			message_t startRequestBaxter(14);
 			memcpy((void *)startRequestBaxter.data(), "StartRecording", 14);
-			kinectSocket.send(startRequestBaxter);
+			baxterSocket.send(startRequestBaxter);
 			cout << "[ZMQ Baxter] Sent StartRecording" << endl;
 
 			// stop recording request obtained from kinect
@@ -179,7 +188,7 @@ int main(int argc, char** argv)
 			else
 			{
 
-	      cout << "[ZMQ Kinect] Invalid reply" << endl;
+	      cout << "[ZMQ Baxter] Invalid reply" << endl;
 				continue;
 			}
 
