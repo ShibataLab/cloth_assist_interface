@@ -101,6 +101,7 @@ void Recorder::run()
         }
   			else
         {
+          std::cout << "[ZMQ] Message Received: " << Message << std::endl;
           std::cout << "[ZMQ] Invalid message" << std::endl;
         }
 

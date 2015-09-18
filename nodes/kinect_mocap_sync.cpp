@@ -18,7 +18,7 @@
 #include <zmq.hpp>
 
 // preprocessor directives
-#define MOCAPIP "tcp://192.168.0.6:5555"
+#define MOCAPIP "tcp://192.168.0.3:5555"
 #define KINECTIP "tcp://localhost:5555"
 
 // namespace declarations
