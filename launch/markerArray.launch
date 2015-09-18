@@ -20,7 +20,7 @@ TODO:
 
   <arg name="output_frame" default="/kinect2_link" />
   <arg name="med_filt_size" default="10" />
-  <arg name="bundle_files" default="$(find Interface)/files/ARMarker/Array.xml" />
+  <arg name="bundle_files" default="$(find Interface)/files/KinectCalibration/Array.xml" />
 
   <node name="ar_track_alvar" pkg="ar_track_alvar" type="findMarkerBundles" respawn="false" output="screen" args="$(arg marker_size) $(arg max_new_marker_error) $(arg max_track_error) $(arg cam_image_topic) $(arg cam_info_topic) $(arg output_frame) $(arg med_filt_size) $(arg bundle_files)" />
 </launch>
