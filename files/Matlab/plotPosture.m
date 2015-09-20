@@ -19,9 +19,9 @@ hold on;
 xlabel('X [m]', 'FontSize', fontSize, 'FontWeight', 'bold');
 ylabel('Y [m]', 'FontSize', fontSize, 'FontWeight', 'bold');
 zlabel('Z [m]', 'FontSize', fontSize, 'FontWeight', 'bold');
-title('Body Posture',  'FontSize', fontSize, 'FontWeight', 'bold');
+title(sprintf('Body Posture %s',fileName),  'FontSize', fontSize, 'FontWeight', 'bold');
 set(gca, 'FontSize', fontSize, 'FontWeight', 'bold');
-axis([0.0 1.0 0.0 0.7 0.5 1.5]);
+axis([-0.2 1.0 -0.2 0.7 0.5 1.5]);
 view([150,30]);
 
 plot3(data(:,1), data(:,2), data(:,3), '.r', 'MarkerSize', markerSize);
@@ -35,5 +35,5 @@ if printFlag
     print(fid,sprintf('../Results/Posture/%s.eps',fileName),'-depsc');
 end
 
-pause;
+pause(2);
 close all;
