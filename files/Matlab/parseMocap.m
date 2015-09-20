@@ -24,8 +24,12 @@ Data = [];
 while ~feof(fid)
       line = fgets(fid);
       dat = str2num(line);
-      Data = [Data; dat];
+      if (length(dat) == length(Head))
+          Data = [Data; dat];
+      else
+          fprintf('Error!\n');
+      end
 end
-
 Data(:,3:end) = Data(:,3:end)/1000;
+
 fclose(fid);
