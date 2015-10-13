@@ -3,7 +3,12 @@
 // Author: Nishanth Koganti
 // Date: 2015/9/2
 
-// Test comment
+// TODO:
+// 1) Implement K-means center extraction for smooth cluster center transition.
+
+// preprocessor directives
+#define ESFSIZE 640
+#define VFHSIZE 308
 
 // CPP headers
 #include <string>
@@ -50,25 +55,28 @@ int main(int argc, char **argv)
   }
 
   // filename default
-  std::string fileName = "default";
+  std::string fileName;
+  char cloudName[200], esfName[200], vfhName[200], outputName[200];
 
-  // parsing command line arguments
-  for(size_t i = 1; i < (size_t)argc; ++i)
+  // printing help information
+  if(argc != 2)
   {
-    std::string param(argv[i]);
-
-    // printing help information
-    if(param == "-h" || param == "--help" || param == "-?" || param == "--?")
-    {
-      help(argv[0]);
-      ros::shutdown();
-      return 0;
-    }
-
-    // other option can only be the fileName
-    else
-      fileName = param;
+    help(argv[0]);
+    ros::shutdown();
+    return 0;
   }
+  else
+    fileName = argv[1];
+
+  // create fileNames for different output files
+  sprintf(esfName, "%sESF", fileName.c_str());
+  sprintf(vfhName, "%sVFH", fileName.c_str());
+  sprintf(cloudName, "%sCloud.bag", fileName.c_str());
+  sprintf(outputName, "%sOutput.bag", fileName.c_str());
+
+  ofstream esfDat(esfName, ofstream::out);
+  ofstream vfhDat(vfhName, ofstream::out);
+	ofstream outputDat(outputName, ofstream::out);
 
   // initializing color and depth topic names
   std::string topicCloud = "/cloth/cloud";
@@ -78,7 +86,7 @@ int main(int argc, char **argv)
   topics.push_back(topicCloud);
 
   rosbag::Bag bag;
-  bag.open(fileName, rosbag::bagmode::Read);
+  bag.open(cloudName, rosbag::bagmode::Read);
   rosbag::View view(bag, rosbag::TopicQuery(topics));
 
   // pcl point cloud
@@ -88,6 +96,8 @@ int main(int argc, char **argv)
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>());
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloudVOG(new pcl::PointCloud<pcl::PointXYZ>());
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloudSOR(new pcl::PointCloud<pcl::PointXYZ>());
+  pcl::PointCloud<pcl::PointXYZ>::Ptr cloudESF(new pcl::PointCloud<pcl::PointXYZ>());
+  pcl::PointCloud<pcl::PointXYZ>::Ptr cloudVFH(new pcl::PointCloud<pcl::PointXYZ>());
   pcl::PointCloud<pcl::Normal>::Ptr cloudNormals(new pcl::PointCloud<pcl::Normal>());
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloudCentered(new pcl::PointCloud<pcl::PointXYZ>());
   pcl::search::KdTree<pcl::PointXYZ>::Ptr neTree(new pcl::search::KdTree<pcl::PointXYZ>());
@@ -95,35 +105,39 @@ int main(int argc, char **argv)
   pcl::PointCloud<pcl::VFHSignature308>::Ptr vfhs(new pcl::PointCloud<pcl::VFHSignature308>());
   pcl::PointCloud<pcl::ESFSignature640>::Ptr esfs(new pcl::PointCloud<pcl::ESFSignature640>());
 
-
   // feature instances
   Eigen::Vector4f centroid;
   pcl::VoxelGrid<pcl::PointXYZ> vog;
-  pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> ne;
   pcl::StatisticalOutlierRemoval<pcl::PointXYZ> sor;
+  pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> ne;
   pcl::ESFEstimation<pcl::PointXYZ, pcl::ESFSignature640> esf;
   pcl::VFHEstimation<pcl::PointXYZ, pcl::Normal, pcl::VFHSignature308> vfh;
 
   // Parameter setting for filtering
-  vog.setLeafSize(0.01f, 0.01f, 0.01f);
   sor.setMeanK(100);
-  sor.setStddevMulThresh(0.7);
-  vfh.setSearchMethod(vfhTree);
   ne.setRadiusSearch(0.03);
   ne.setSearchMethod(neTree);
+  sor.setStddevMulThresh(0.7);
+  vfh.setSearchMethod(vfhTree);
+  vog.setLeafSize(0.005f, 0.005f, 0.005f);
 
   // ros time init
   ros::Time::init();
 
   // ros iterator initialization
+  char c;
   int frame = 0;
-  ros::Time time;
   ros::Rate rate(30);
+  ros::Duration tPass;
+  ros::Time now, begin;
   rosbag::View::iterator iter = view.begin();
 
   while(iter != view.end())
   {
-    time = (*iter).getTime();
+    now = (*iter).getTime();
+    if (frame == 0)
+      begin = (*iter).getTime();
+    tPass = now - begin;
 
     rosbag::MessageInstance const m = *iter;
 
@@ -137,8 +151,11 @@ int main(int argc, char **argv)
     sor.filter(*cloudSOR);
 
     // Center point cloud
-    compute3DCentroid(*cloudSOR,centroid);
-    demeanPointCloud(*cloudSOR, centroid,*cloudCentered);
+    compute3DCentroid(*cloudSOR, centroid);
+    demeanPointCloud(*cloudSOR, centroid, *cloudCentered);
+
+    copyPointCloud(*cloudCentered, *cloudVFH);
+		copyPointCloud(*cloudCentered, *cloudESF);
 
     // Normal Estimation
     ne.setInputCloud(cloudCentered);
@@ -153,15 +170,41 @@ int main(int argc, char **argv)
     esf.setInputCloud(cloudCentered);
     esf.compute(*esfs);
 
-    viewer.showCloud(cloudCentered);
+    vfhDat << tPass.toSec() << ",";
+    for (int i = 0; i < VFHSIZE; i++)
+      vfhDat << vfhs->points[0].histogram[i] << ",";
+    vfhDat << endl;
+    cout << "Write VFH" << endl;
 
-    std::cout << "Frame: " << frame << ", Time: " << time << std::endl;
+    esfDat << tPass.toSec() << ",";
+    for (int i = 0; i < ESFSIZE; i++)
+      esfDat << esfs->points[0].histogram[i] << ",";
+    esfDat << endl;
+    cout << "Write ESF" << endl;
+
+    outputDat << tPass.toSec() << "," << cloudSOR->size() << endl;
+    for (int i = 0; i < cloudSOR->size(); i++)
+      outputDat << cloudSOR->points[i].x << "," << cloudSOR->points[i].y << "," << cloudSOR->points[i].z << endl;
+    cout << "Write Filtered Point Cloud" << endl;
+
+    viewer.showCloud(cloudCentered);
+    std::cout << "Frame: " << frame << ", Time: " << tPass.toSec() << std::endl;
+    std::cout << "Cloud: " << cloud->size() << ", VOG: " << cloudVOG->size() << ", SOR: " << cloudSOR->size() << ", VFH: " << vfhs->points.size() << ", ESF: " << esfs->points.size() << endl;
     frame++;
+
+    std::cout << "Next Frame?" << std::endl;
+    std::cin >> c;
+
+    if (c == 'n')
+      break;
 
     rate.sleep();
   }
 
   bag.close();
+  esfDat.close();
+  vfhDat.close();
+  outputDat.close();
 
   // clean shutdown
   ros::shutdown();
