@@ -192,12 +192,6 @@ int main(int argc, char **argv)
     std::cout << "Cloud: " << cloud->size() << ", VOG: " << cloudVOG->size() << ", SOR: " << cloudSOR->size() << ", VFH: " << vfhs->points.size() << ", ESF: " << esfs->points.size() << endl;
     frame++;
 
-    std::cout << "Next Frame?" << std::endl;
-    std::cin >> c;
-
-    if (c == 'n')
-      break;
-
     rate.sleep();
   }
 
