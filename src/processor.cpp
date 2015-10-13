@@ -14,12 +14,13 @@ Processor::Processor(std::string fileName, std::string topicColor, std::string t
 {
   // initialize select object flag
   m_selectObject = false;
+  m_trackMode = true;
 
   // create matrices for intrinsic parameters
   m_cameraMatrix = cv::Mat::zeros(3, 3, CV_64F);
 
   // create char file names
-  char bagName[200], cloudBagName[200], videoName[200];
+  char bagName[200], cloudBagName[200], videoName[200], tracksName[200];
 
   // open the bag file
   sprintf(bagName, "%s.bag", fileName.c_str());
@@ -49,6 +50,14 @@ Processor::Processor(std::string fileName, std::string topicColor, std::string t
   {
     m_height = 424;
     m_width = 512;
+  }
+
+  // trackMode
+  if (m_trackMode)
+  {
+    sprintf(tracksName, "%s", fileName.c_str());
+    m_tracks.open(tracksName);
+    m_tracks << "Frame,Time" << std::endl;
   }
 
   // cloudMode
@@ -84,10 +93,14 @@ void Processor::run()
   std::string topicCloud = "/cloth/cloud";
   rosbag::View::iterator iter = m_view->begin();
 
+  double currentTime, timeTrack, startTime;
+
   // create pcl cloud viewer
   pcl::visualization::CloudViewer viewer("Cloth Tracker");
 
+  // ros time instance
   m_time = (*iter).getTime();
+  startTime = m_time.toSec();
 
   // read first set of images for calibration
   for (int i = 0; i < 3; i++)
@@ -112,9 +125,14 @@ void Processor::run()
   // peform cloth calibration
   clothCalibrate();
 
+
+  // main loop
+  int frame = 1;
   while(iter != m_view->end())
   {
     m_time = (*iter).getTime();
+    currentTime = m_time.toSec();
+    timeTrack = currentTime - startTime;
 
     for (int i = 0; i < 3; i++)
     {
@@ -137,6 +155,9 @@ void Processor::run()
 
     cloudExtract();
 
+    if (m_trackMode)
+      m_tracks << frame << "," << timeTrack << std::endl;
+
     if (m_videoMode)
       m_writer.write(m_output);
 
@@ -147,6 +168,8 @@ void Processor::run()
     cv::imshow("Output", m_output);
     cv::imshow("Backproj", m_backproj);
     cv::waitKey(20);
+
+    frame++;
   }
 
   // clean exit

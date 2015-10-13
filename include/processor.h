@@ -44,7 +44,7 @@
 #define FPS 30
 #define SMIN 30
 #define VMIN 30
-#define VMAX 250
+#define VMAX 254
 
 // Tracker class
 class Processor
@@ -61,7 +61,10 @@ class Processor
 
   private:
     // flags to save data
-    bool m_videoMode, m_cloudMode;
+    bool m_videoMode, m_cloudMode, m_trackMode;
+
+    // write descriptor
+    std::ofstream m_tracks;
 
     // rosbag variables
     ros::Time m_time;
