@@ -1,4 +1,4 @@
-% parseHist.m: Program to extract point cloud from files and plot results
+% parseCloud.m: Program to extract point cloud from files and plot results
 % Author: Nishanth Koganti
 % Date: 2015/10/13
 

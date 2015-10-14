@@ -9,7 +9,7 @@
 // preprocessor directives
 #define ESFSIZE 640
 #define VFHSIZE 308
-#define CLUSTERNUM 40
+#define CLUSTERNUM 50
 
 // CPP headers
 #include <string>
@@ -105,12 +105,12 @@ int main(int argc, char **argv)
 
   for (int i = 0; i < 4; i++)
     calibDat >> transform(i,0) >> c >> transform(i,1) >> c >> transform(i,2) >> c >> transform(i,3);
-  // std::cout << transform.matrix() << std::endl;
+  std::cout << transform.matrix() << std::endl;
 
-  //std::cin >> c;
+  std::cin >> c;
 
   // pcl point cloud
-  // pcl::visualization::CloudViewer viewer("Feature Extraction");
+  pcl::visualization::CloudViewer viewer("Feature Extraction");
 
   // pcl feature extraction Initialization
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>());
@@ -212,7 +212,7 @@ int main(int argc, char **argv)
       cloudMat.at<float>(i,2) = cloudCentered->points[i].z;
     }
 
-    cv::kmeans(cloudMat, CLUSTERNUM, labels, cv::TermCriteria( CV_TERMCRIT_EPS+CV_TERMCRIT_ITER, 1000, 0.001), 3, cv::KMEANS_PP_CENTERS, clusterCenters);
+    cv::kmeans(cloudMat, CLUSTERNUM, labels, cv::TermCriteria( CV_TERMCRIT_EPS+CV_TERMCRIT_ITER, 100, 0.001), 3, cv::KMEANS_PP_CENTERS, clusterCenters);
 
     for (int i = 0; i < CLUSTERNUM; i++)
     {
@@ -231,20 +231,21 @@ int main(int argc, char **argv)
       esfDat << esfs->points[0].histogram[i] << ",";
     esfDat << endl;
 
-    clusterDat << tPass.toSec() << "," << CLUSTERNUM << endl;
+    clusterDat << tPass.toSec() << "," << CLUSTERNUM << ",";
     for (int i = 0; i < CLUSTERNUM; i++)
-      clusterDat << cloudClusters->points[i].x << "," << cloudClusters->points[i].y << "," << cloudClusters->points[i].z << endl;
+      clusterDat << cloudClusters->points[i].x << "," << cloudClusters->points[i].y << "," << cloudClusters->points[i].z << ",";
+    clusterDat << endl;
 
     outputDat << tPass.toSec() << "," << cloudCentered->size() << endl;
     for (int i = 0; i < cloudPoints; i++)
       outputDat << cloudCentered->points[i].x << "," << cloudCentered->points[i].y << "," << cloudCentered->points[i].z << endl;
 
-    // viewer.showCloud(cloudClusters);
+    viewer.showCloud(cloudCentered);
     std::cout << "Frame: " << frame << ", Time: " << tPass.toSec() << std::endl;
     std::cout << "Cloud: " << cloud->size() << ", VOG: " << cloudVOG->size() << ", SOR: " << cloudSOR->size() << ", VFH: " << vfhs->points.size() << ", ESF: " << esfs->points.size() << endl;
     frame++;
 
-    // rate.sleep();
+    rate.sleep();
   }
 
   bag.close();
