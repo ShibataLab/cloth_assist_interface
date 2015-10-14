@@ -5,17 +5,10 @@
 function Data = parseHist(fileName)
 
 mode = 1;
-fid = fopen(fileName);
 
-% Getting the Data
-Data = [];
-while ~feof(fid)
-      line = fgets(fid);
-      dat = str2num(line);
-      Data = [Data; dat(2:end)];
-end
-
-fclose(fid);
+% getting the data
+Data = load(fileName);
+Data = Data(:, 2:end);
 
 if mode == 0
     return;
@@ -37,6 +30,8 @@ title('Histogram Plotter', 'FontSize', fontSize, 'FontWeight', 'bold');
 xlabel('Descriptor', 'FontSize', fontSize, 'FontWeight', 'bold');
 ylabel('Value', 'FontSize', fontSize, 'FontWeight', 'bold');
 set(gca, 'FontSize', fontSize, 'FontWeight', 'bold');
+
+waitforbuttonpress;
 
 for i = 1:nSamples
     pl = plot(xData, Data(i,:), '-b', 'LineWidth', 2);
