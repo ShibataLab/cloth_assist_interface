@@ -9,6 +9,7 @@
 // preprocessor directives
 #define ESFSIZE 640
 #define VFHSIZE 308
+#define CLUSTERNUM 40
 
 // CPP headers
 #include <string>
@@ -61,7 +62,7 @@ int main(int argc, char **argv)
   // filename default
   char c;
   std::string fileName, calibName;
-  char cloudName[200], esfName[200], vfhName[200], outputName[200];
+  char cloudName[200], esfName[200], vfhName[200], outputName[200], clusterName[200];
 
   // printing help information
   if(argc != 3)
@@ -76,16 +77,17 @@ int main(int argc, char **argv)
     calibName = argv[2];
   }
 
-
   // create fileNames for different output files
   sprintf(esfName, "%sESF", fileName.c_str());
   sprintf(vfhName, "%sVFH", fileName.c_str());
+  sprintf(outputName, "%sOutput", fileName.c_str());
   sprintf(cloudName, "%sCloud.bag", fileName.c_str());
-  sprintf(outputName, "%sOutput.bag", fileName.c_str());
+  sprintf(clusterName, "%sClusters", fileName.c_str());
 
   ofstream esfDat(esfName, ofstream::out);
   ofstream vfhDat(vfhName, ofstream::out);
 	ofstream outputDat(outputName, ofstream::out);
+  ofstream clusterDat(clusterName, ofstream::out);
 
   // initializing color and depth topic names
   std::string topicCloud = "/cloth/cloud";
@@ -103,11 +105,12 @@ int main(int argc, char **argv)
 
   for (int i = 0; i < 4; i++)
     calibDat >> transform(i,0) >> c >> transform(i,1) >> c >> transform(i,2) >> c >> transform(i,3);
-  std::cout << transform.matrix() << std::endl;
-  std::cin >> c;
+  // std::cout << transform.matrix() << std::endl;
+
+  //std::cin >> c;
 
   // pcl point cloud
-  pcl::visualization::CloudViewer viewer("Feature Extraction");
+  // pcl::visualization::CloudViewer viewer("Feature Extraction");
 
   // pcl feature extraction Initialization
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>());
@@ -116,6 +119,7 @@ int main(int argc, char **argv)
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloudESF(new pcl::PointCloud<pcl::PointXYZ>());
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloudVFH(new pcl::PointCloud<pcl::PointXYZ>());
   pcl::PointCloud<pcl::Normal>::Ptr cloudNormals(new pcl::PointCloud<pcl::Normal>());
+  pcl::PointCloud<pcl::PointXYZ>::Ptr cloudClusters(new pcl::PointCloud<pcl::PointXYZ>());
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloudCentered(new pcl::PointCloud<pcl::PointXYZ>());
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloudTransform(new pcl::PointCloud<pcl::PointXYZ>());
   pcl::search::KdTree<pcl::PointXYZ>::Ptr neTree(new pcl::search::KdTree<pcl::PointXYZ>());
@@ -138,6 +142,17 @@ int main(int argc, char **argv)
   sor.setStddevMulThresh(0.7);
   vfh.setSearchMethod(vfhTree);
   vog.setLeafSize(0.005f, 0.005f, 0.005f);
+
+  // initialize clusters cloud
+  cloudClusters->height = 1;
+  cloudClusters->width = CLUSTERNUM;
+
+  cloudClusters->is_dense = false;
+  cloudClusters->points.resize(cloudClusters->width * cloudClusters->height);
+
+  // opencv variables
+  int cloudPoints = 0;
+  cv::Mat cloudMat, clusterCenters, labels;
 
   // ros time init
   ros::Time::init();
@@ -186,35 +201,57 @@ int main(int argc, char **argv)
     esf.setInputCloud(cloudCentered);
     esf.compute(*esfs);
 
+    // kmeans clustering
+    cloudPoints = cloudCentered->size();
+    cloudMat = cv::Mat(cloudPoints, 3, CV_32F);
+
+    for (int i = 0; i < cloudPoints; i++)
+    {
+      cloudMat.at<float>(i,0) = cloudCentered->points[i].x;
+      cloudMat.at<float>(i,1) = cloudCentered->points[i].y;
+      cloudMat.at<float>(i,2) = cloudCentered->points[i].z;
+    }
+
+    cv::kmeans(cloudMat, CLUSTERNUM, labels, cv::TermCriteria( CV_TERMCRIT_EPS+CV_TERMCRIT_ITER, 1000, 0.001), 3, cv::KMEANS_PP_CENTERS, clusterCenters);
+
+    for (int i = 0; i < CLUSTERNUM; i++)
+    {
+      cloudClusters->points[i].x = clusterCenters.at<float>(i,0);
+      cloudClusters->points[i].y = clusterCenters.at<float>(i,1);
+      cloudClusters->points[i].z = clusterCenters.at<float>(i,2);
+    }
+
     vfhDat << tPass.toSec() << ",";
     for (int i = 0; i < VFHSIZE; i++)
       vfhDat << vfhs->points[0].histogram[i] << ",";
     vfhDat << endl;
-    cout << "Write VFH" << endl;
 
     esfDat << tPass.toSec() << ",";
     for (int i = 0; i < ESFSIZE; i++)
       esfDat << esfs->points[0].histogram[i] << ",";
     esfDat << endl;
-    cout << "Write ESF" << endl;
+
+    clusterDat << tPass.toSec() << "," << CLUSTERNUM << endl;
+    for (int i = 0; i < CLUSTERNUM; i++)
+      clusterDat << cloudClusters->points[i].x << "," << cloudClusters->points[i].y << "," << cloudClusters->points[i].z << endl;
 
     outputDat << tPass.toSec() << "," << cloudCentered->size() << endl;
-    for (int i = 0; i < cloudCentered->size(); i++)
+    for (int i = 0; i < cloudPoints; i++)
       outputDat << cloudCentered->points[i].x << "," << cloudCentered->points[i].y << "," << cloudCentered->points[i].z << endl;
-    cout << "Write Filtered Point Cloud" << endl;
 
-    viewer.showCloud(cloudCentered);
+    // viewer.showCloud(cloudClusters);
     std::cout << "Frame: " << frame << ", Time: " << tPass.toSec() << std::endl;
     std::cout << "Cloud: " << cloud->size() << ", VOG: " << cloudVOG->size() << ", SOR: " << cloudSOR->size() << ", VFH: " << vfhs->points.size() << ", ESF: " << esfs->points.size() << endl;
     frame++;
 
-    rate.sleep();
+    // rate.sleep();
   }
 
   bag.close();
   esfDat.close();
   vfhDat.close();
   outputDat.close();
+  clusterDat.close();
 
   // clean shutdown
   ros::shutdown();
