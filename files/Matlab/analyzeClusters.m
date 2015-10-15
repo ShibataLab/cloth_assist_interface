@@ -2,11 +2,12 @@
 % Author: Nishanth Koganti
 % Date: 2015/10/13
 
-function [minVar, meanVar, maxVar] = analyzeClusters(fileName)
+% Main Analysis
+function [vars, varTracks] = analyzeClusters(fileName, strategyMode)
 
 close all;
 
-mode = 2;
+mode = 0;
 fid = fopen(fileName);
 
 %% plotting initialization
@@ -21,13 +22,13 @@ if mode == 2
     zlabel('Z', 'FontSize', fontSize, 'FontWeight', 'bold');
     set(gca, 'FontSize', fontSize, 'FontWeight', 'bold');
     view([45,45]);
+    
+    waitforbuttonpress;
 end
 
 %% parsing data
 prevClusters = [];
 clusterData = [];
-
-waitforbuttonpress;
 
 while ~feof(fid)
     line = fgets(fid);
@@ -43,30 +44,36 @@ while ~feof(fid)
     
     % strategy 1
     % sort clusters column wise
-    % clusters = sortrows(clusters);
+    if strategyMode == 1
+        clusters = sortrows(clusters);
+    end
     
     % strategy 2
     % sort clusters based on distance from origin or fixed point
-    % clusterNorms = sqrt(sum(abs(clusters).^2,2));
-    % [~, ind] = sort(clusterNorms);
-    % clusters = clusters(ind,:);
+    if strategyMode == 2
+        clusterNorms = sqrt(sum(abs(clusters).^2,2));
+        [~, ind] = sort(clusterNorms);
+        clusters = clusters(ind,:);
+    end
     
     % strategy 3
     % sort clusters greedily based on previous cluster centers
-    if ~isempty(prevClusters)
-        tempMat = zeros(size(clusters));
-    
-        for i = 1:nPoints,
-            point = prevClusters(i,:);
-            dist = sqrt(sum((repmat(point,nPoints-i+1,1) - clusters).^2,2));
-            [~,ind] = min(dist);
-            tempMat(i,:) = clusters(ind,:);
-            clusters(ind,:) = [];
+    if strategyMode == 3
+        if ~isempty(prevClusters)
+            tempMat = zeros(size(clusters));
+
+            for i = 1:nPoints,
+                point = prevClusters(i,:);
+                dist = sqrt(sum((repmat(point,nPoints-i+1,1) - clusters).^2,2));
+                [~,ind] = min(dist);
+                tempMat(i,:) = clusters(ind,:);
+                clusters(ind,:) = [];
+            end
+
+            clusters = tempMat;
         end
-        
-        clusters = tempMat;
+        prevClusters = clusters;
     end
-    prevClusters = clusters;
     
     clusterData = [clusterData; reshape(clusters', 1, size(clusters,1)*size(clusters,2))];
     
@@ -89,8 +96,7 @@ varTracks = var(velData);
 maxVar = max(varTracks);
 minVar = min(varTracks);
 meanVar = mean(varTracks);
-
-waitforbuttonpress;
+vars = [minVar meanVar maxVar];
 
 if mode >= 1
     nDims = size(clusterData,2);
