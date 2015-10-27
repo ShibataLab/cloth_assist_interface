@@ -73,7 +73,7 @@ def main():
         frame += 1
 
     # save clustersData to file
-    np.savetxt(outputName, clusterData, delimiter=",")
+    np.savetxt(outputName, clustersData, delimiter=",")
 
 # call main function
 if __name__ == '__main__':
