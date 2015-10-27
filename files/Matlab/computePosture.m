@@ -11,7 +11,7 @@ function [data, head, body, lShoulder, rShoulder] = computePosture(fileName, nPo
 lineWidth = 3;
 fontSize = 15;
 markerSize = 20;
-plotFlag = true;
+plotFlag = false;
 printFlag = false;
 
 [~,data] = parsePosture(fileName);
