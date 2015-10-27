@@ -68,12 +68,25 @@ def main():
 
         estimator.fit(cloud)
         centers = estimator.cluster_centers_
-        clustersData = np.vstack([clustersData, centers.reshape((1,clusterNum*3))])
+
+        # strategy 1
+        centersSave = centers
+        # strategy 2
+        # centersSave = centers[centers[:,0].argsort()]
+
+        clustersData = np.vstack([clustersData, centersSave.reshape((1,clusterNum*3))])
 
         frame += 1
 
     # save clustersData to file
-    np.savetxt(outputName, clusterData, delimiter=",")
+    np.savetxt(outputName, clustersData, delimiter=",")
+
+    # plot one of the track files
+    # xDat = range(clustersData.shape[0])
+    # plt.figure()
+    # plt.plot(xDat, clustersData[:,0])
+    # plt.title(args.fileName)
+    # plt.show()
 
 # call main function
 if __name__ == '__main__':
