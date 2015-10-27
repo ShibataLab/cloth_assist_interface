@@ -2,7 +2,7 @@
 // using the cam shift algorithm and obtain point cloud using pcl functions
 // Requirements: relies on the use of iai kinect2 bridge, opencv and pcl
 // Author: Nishanth Koganti
-// Date: 2015/8/22
+// Date: 2015/10/27
 
 // TODO:
 // 1) Improve point cloud processing using different filters
@@ -241,7 +241,6 @@ void Tracker::clothTracker()
   // more variables for printing text and other functions
   double fps = 0;
   size_t frameCount = 0;
-  std::ostringstream oss;
 
   // create named windows for displaying color and backprojection images
   cv::namedWindow("Color");
@@ -276,8 +275,7 @@ void Tracker::clothTracker()
       if(elapsed >= 1.0)
       {
         fps = frameCount / elapsed;
-        oss.str("");
-        oss << "fps: " << fps << " ( " << elapsed / frameCount * 1000.0 << " ms)";
+        std::cout << fps << std::flush;
         start = now;
         frameCount = 0;
       }
@@ -330,6 +328,7 @@ void Tracker::clothTracker()
   }
 
   // destroy all windows and shutdown
+  std::cout << std::endl;
   cv::destroyAllWindows();
   cv::waitKey(100);
 }
@@ -344,13 +343,6 @@ void Tracker::createROI(cv::Mat &color, cv::Mat &depth, cv::Mat &backproj, cv::M
   float hranges[] = { 0, 180 };
   const float* phranges = hranges;
   cv::Mat hsv, hue, mask, hist, pcImg, pcMask;
-
-  // variables for text
-  const int lineText = 1;
-  const cv::Point pos(5, 15);
-  const double sizeText = 0.5;
-  const int font = cv::FONT_HERSHEY_SIMPLEX;
-  const cv::Scalar colorText = CV_RGB(255, 255, 255);
 
   // initialize the calibration values
   hist = this->hist;
@@ -384,10 +376,6 @@ void Tracker::createROI(cv::Mat &color, cv::Mat &depth, cv::Mat &backproj, cv::M
 
   // draw rectangles around highlighted areas
   cv::rectangle(color, window.tl(), window.br(), cv::Scalar(255, 255, 255), 2, CV_AA);
-
-  // put text in the image
-  cv::putText(color, oss.str(), pos, font, sizeText, colorText, lineText, CV_AA);
-  cv::putText(backproj, oss.str(), pos, font, sizeText, colorText, lineText, CV_AA);
 
   roi.release();
 
