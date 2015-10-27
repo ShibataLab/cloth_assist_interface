@@ -28,6 +28,7 @@
 // PCL headers
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
+#include <pcl/features/esf.h>
 #include <pcl_ros/point_cloud.h>
 #include <pcl/common/transforms.h>
 #include <pcl/filters/voxel_grid.h>
@@ -112,14 +113,17 @@ class Tracker
 
     // create publisher for publishing ros topics as well
     ros::Publisher _pubPointCloud;
+    ros::Publisher _pubESFDescriptor;
 
     // pcl feature extraction Initialization
     pcl::PointCloud<pcl::PointXYZ>::Ptr _cloud, _cloudVOG, _cloudSOR, _cloudCentered;
+    pcl::PointCloud<pcl::ESFSignature640>::Ptr _cloudESF;
 
     // feature instances
     Eigen::Vector4f _centroid;
     pcl::VoxelGrid<pcl::PointXYZ> _vog;
     pcl::StatisticalOutlierRemoval<pcl::PointXYZ> _sor;
+    pcl::ESFEstimation<pcl::PointXYZ, pcl::ESFSignature640> _esf;
 
   public:
     // class constructor

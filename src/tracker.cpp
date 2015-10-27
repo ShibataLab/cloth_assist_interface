@@ -67,7 +67,8 @@ void Tracker::start()
   _subCameraInfoDepth = new message_filters::Subscriber<sensor_msgs::CameraInfo>(_nh, _topicCameraInfoDepth, _queueSize);
 
   // create ros publisher
-  _pubPointCloud = _nh.advertise<pcl::PointCloud<pcl::PointXYZ> > ("/cloth/points", 5);
+  _pubPointCloud = _nh.advertise<pcl::PointCloud<pcl::PointXYZ> > ("/cloth/points", 10);
+  _pubESFDescriptor = _nh.advertise<pcl::PointCloud<pcl::ESFSignature640> > ("/cloth/descriptor", 10);
 
   // creating a exact synchronizer for 4 ros topics with queueSize
   // the Tracker class callback function is set as the callback function
@@ -300,6 +301,7 @@ void Tracker::clothTracker()
       processCloud();
 
       // publish the point cloud message
+      _pubESFDescriptor.publish(_cloudESF);
       _pubPointCloud.publish(_cloudCentered);
 
       // show image
@@ -442,6 +444,7 @@ void Tracker::processCloud()
   _cloudVOG = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
   _cloudSOR = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
   _cloudCentered = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
+  _cloudESF = pcl::PointCloud<pcl::ESFSignature640>::Ptr(new pcl::PointCloud<pcl::ESFSignature640>());
 
   // process the point cloud
   _vog.setInputCloud(_cloud);
@@ -453,6 +456,10 @@ void Tracker::processCloud()
   // Center point cloud
   pcl::compute3DCentroid(*_cloudSOR, _centroid);
   pcl::demeanPointCloud(*_cloudSOR, _centroid, *_cloudCentered);
+
+  // Compute ESF descriptor
+  _esf.setInputCloud(_cloudCentered);
+  _esf.compute(*_cloudESF);
 }
 
 // mouse click callback function for T-shirt color calibration
