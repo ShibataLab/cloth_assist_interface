@@ -5,14 +5,17 @@
 % TODO:
 % 1) Implement in python
 
-function computeMocap(fileName)
+function computeMocap(trackName, mocapName, postureName)
 
-plotFlag = false;
+% set the flag names
+plotFlag = 0;
 printFlag = false;
 
-[~, kinectData] = parseKinect(sprintf('./Tracks/%s',fileName));
-[~, mocapData] = parseMocap(sprintf('./MocapData/%s.trc',fileName));
+% parse the track file and mocap data
+kinectData = parseKinectTracks(sprintf('%s',trackName));
+[~, mocapData] = parseMocap(sprintf('%s.trc',mocapName));
 
+% parameter initialization
 nCollar = 6;
 nLSleeve = 3;
 nRSleeve = 3;
@@ -22,7 +25,8 @@ nSleevePoints = 20;
 nCollarPoints = 40;
 nSamples = size(kinectData,1);
 
-offset = 20;
+% compute mocap data corresponding to kinect tracks
+offset = 15;
 mocapT = mocapData(:,2);
 kinectT = kinectData(:,2);
 mocapInd = zeros(nSamples,1);
@@ -37,22 +41,27 @@ for i = 1:nSamples
     end
 end
 
-topologyCoord = zeros(nSamples,8);
+% variables for features
+ellipseData = zeros(nSamples,19);
+topCoordData = zeros(nSamples,8);
 markerData = mocapData(mocapInd,3:end);
-centeredMarkerData = zeros(nSamples,3*(nMarkers+1));
-[bodyData,head,body,lShoulder,rShoulder] = computePosture(sprintf('./Posture/%s',fileName));
+centeredMarkerData = zeros(nSamples,3*nMarkers);
 
+% parse the posture file and get body points
+[bodyData,head,body,lShoulder,rShoulder] = computePosture(sprintf('%s',postureName), nBodyPoints);
+
+% compute centered marker data
 for i = 1:nSamples
     mData = markerData(i,:);
     mData = reshape(mData,3,nMarkers)';
     meanPoint = mean(mData);
     mData = mData - repmat(meanPoint,nMarkers,1);
-    mData = [meanPoint; mData];
-    mData = reshape(mData',3*(nMarkers+1),1);
+    mData = reshape(mData',3*nMarkers,1);
     centeredMarkerData(i,:) = mData;
 end
 
-if plotFlag
+% plot the body posture data
+if plotFlag == 3
     close all;
     fontSize = 12;
     markerSize = 25;
@@ -80,45 +89,115 @@ end
 for i = 1:nSamples
     collarDat = markerData(i,1:nCollar*3);
     collarDat = reshape(collarDat,3,nCollar)';
-    collarData = centeredMarkerData(i,1:nCollar*3);
-    collarData = reshape(collarData,3,nCollar)';    
-    collarData = ellipseApprox(collarData,nCollarPoints);
+    [collarEllDat, ~] = ellipseApprox(collarDat,nCollarPoints);
 
     lSleeveDat = markerData(i,nCollar*3+1:nCollar*3+nLSleeve*3);
     lSleeveDat = reshape(lSleeveDat,3,nLSleeve)';
-    lSleeveData = centeredMarkerData(i,nCollar*3+1:nCollar*3+nLSleeve*3);
-    lSleeveData = reshape(lSleeveDat,3,nLSleeve)';
-    lSleeveData = sleeveApprox(lSleeveData(2,:),bodyData([4 6],:),nSleevePoints);
-
+    [lSleeveEllDat, ~] = sleeveApprox(lSleeveDat(3,:),bodyData([4 6],:),nSleevePoints);
+    
     rSleeveDat = markerData(i,nCollar*3+nLSleeve*3+1:nCollar*3+nLSleeve*3+nRSleeve*3);
     rSleeveDat = reshape(rSleeveDat,3,nRSleeve)';
-    rSleeveData = centeredMarkerData(i,nCollar*3+nLSleeve*3+1:nCollar*3+nLSleeve*3+nRSleeve*3);
-    rSleeveData = reshape(rSleeveDat,3,nRSleeve)';
-    rSleeveData = sleeveApprox(rSleeveData(1,:),bodyData([5 7],:),nSleevePoints);
+    [rSleeveEllDat, ~] = sleeveApprox(rSleeveDat(1,:),bodyData([5 7],:),nSleevePoints);
+    
+    topCoordData(i,:) = topologyCompute(head,body,lShoulder,rShoulder,collarEllDat,lSleeveEllDat,rSleeveEllDat);
 
-    topologyCoord(i,:) = topologyCompute(head,body,lShoulder,rShoulder,collarData,lSleeveData,rSleeveData);
-
-    if plotFlag
+    if plotFlag == 3
         pl1 = plot3(collarDat(:,1), collarDat(:,2), collarDat(:,3), '.-m', 'MarkerSize', markerSize, 'LineWidth', lineWidth);
         pl2 = plot3(lSleeveDat(:,1), lSleeveDat(:,2), lSleeveDat(:,3), '.-m', 'MarkerSize', markerSize, 'LineWidth', lineWidth);
         pl3 = plot3(rSleeveDat(:,1), rSleeveDat(:,2), rSleeveDat(:,3), '.-m', 'MarkerSize', markerSize, 'LineWidth', lineWidth);
+        pl4 = plot3(collarEllDat(:,1), collarEllDat(:,2), collarEllDat(:,3), '.-g', 'MarkerSize', markerSize, 'LineWidth', lineWidth);
+        pl5 = plot3(lSleeveEllDat(:,1), lSleeveEllDat(:,2), lSleeveEllDat(:,3), '.-g', 'MarkerSize', markerSize, 'LineWidth', lineWidth);
+        pl6 = plot3(rSleeveEllDat(:,1), rSleeveEllDat(:,2), rSleeveEllDat(:,3), '.-g', 'MarkerSize', markerSize, 'LineWidth', lineWidth);
         drawnow; 
 
-        pause(0.001);
+        pause(0.033);
 
         if printFlag
-            print(fid,sprintf('../Results/MocapData/Figures/%s%03d.png',fileName,i),'-dpng');
+            print(fid,sprintf('../Results/MocapData/Figures/%s%03d.png',mocapName,i),'-dpng');
         end
 
         delete(pl1);
         delete(pl2);
         delete(pl3);
+        delete(pl4);
+        delete(pl5);
+        delete(pl6);
     end
 end
 
-dlmwrite(sprintf('../Results/MocapData/%sRawMarker',fileName),markerData);
-dlmwrite(sprintf('../Results/MocapData/%sTopCoord',fileName),topologyCoord);
-dlmwrite(sprintf('../Results/MocapData/%sMarker',fileName),centeredMarkerData);
+if plotFlag >= 2
+    close all;
+    fontSize = 12;
+    markerSize = 25;
+    lineWidth = 3;
+
+    fid1 = figure; 
+    hold on;
+    xlabel('X [m]', 'FontSize', fontSize, 'FontWeight', 'bold');
+    ylabel('Y [m]', 'FontSize', fontSize, 'FontWeight', 'bold');
+    zlabel('Z [m]', 'FontSize', fontSize, 'FontWeight', 'bold');
+    title('Mocap Marker Plot',  'FontSize', fontSize, 'FontWeight', 'bold');
+    set(gca, 'FontSize', fontSize, 'FontWeight', 'bold');
+    axis([-0.5 0.5 -0.5 0.5 -0.5 0.5]);
+    view([150,30]);
+
+    waitforbuttonpress;
+end
+
+for i = 1:nSamples
+    collarData = centeredMarkerData(i,1:nCollar*3);
+    collarData = reshape(collarData,3,nCollar)';    
+    [collarEllData, collarEllParams] = ellipseApprox(collarData,nCollarPoints);
+
+    lSleeveData = centeredMarkerData(i,nCollar*3+1:nCollar*3+nLSleeve*3);
+    lSleeveData = reshape(lSleeveData,3,nLSleeve)';
+    [lSleeveEllData, lSleeveEllParams] = sleeveCenterApprox(lSleeveData,nSleevePoints);
+
+    rSleeveData = centeredMarkerData(i,nCollar*3+nLSleeve*3+1:nCollar*3+nLSleeve*3+nRSleeve*3);
+    rSleeveData = reshape(rSleeveData,3,nRSleeve)';
+    [rSleeveEllData, rSleeveEllParams] = sleeveCenterApprox(rSleeveData,nSleevePoints);
+
+    ellipseData(i,:) = [collarEllParams lSleeveEllParams rSleeveEllParams];
+
+    if plotFlag >= 2
+        pl1 = plot3(collarData(:,1), collarData(:,2), collarData(:,3), '.-m', 'MarkerSize', markerSize, 'LineWidth', lineWidth);
+        pl2 = plot3(lSleeveData(:,1), lSleeveData(:,2), lSleeveData(:,3), '.-m', 'MarkerSize', markerSize, 'LineWidth', lineWidth);
+        pl3 = plot3(rSleeveData(:,1), rSleeveData(:,2), rSleeveData(:,3), '.-m', 'MarkerSize', markerSize, 'LineWidth', lineWidth);
+        pl4 = plot3(collarEllData(:,1), collarEllData(:,2), collarEllData(:,3), '.-g', 'MarkerSize', markerSize, 'LineWidth', lineWidth);
+        pl5 = plot3(lSleeveEllData(:,1), lSleeveEllData(:,2), lSleeveEllData(:,3), '.-g', 'MarkerSize', markerSize, 'LineWidth', lineWidth);
+        pl6 = plot3(rSleeveEllData(:,1), rSleeveEllData(:,2), rSleeveEllData(:,3), '.-g', 'MarkerSize', markerSize, 'LineWidth', lineWidth);
+        drawnow; 
+
+        pause(0.033);
+
+        if printFlag
+            print(fid1,sprintf('../Results/MocapData/Figures/%s%03d.png',mocapName,i),'-dpng');
+        end
+
+        delete(pl1);
+        delete(pl2);
+        delete(pl3);
+        delete(pl4);
+        delete(pl5);
+        delete(pl6);
+    end
+end
+
+if plotFlag >= 1
+    close all;
+    xDat = 1:nSamples;
+    
+    for i = 1:size(topCoordData,2)
+        figure;
+        plot(xDat,topCoordData(:,i));
+    end
+end
+
+% save all the feature files
+dlmwrite(sprintf('%sEllipse',mocapName),ellipseData);
+dlmwrite(sprintf('%sRawMarker',mocapName),markerData);
+dlmwrite(sprintf('%sTopCoord',mocapName),topCoordData);
+dlmwrite(sprintf('%sMarker',mocapName),centeredMarkerData);
 
 %% Function for piecewise linear approximation
 function outputData = linearApprox(inputData, nPoints)
@@ -135,7 +214,7 @@ outputData = interp1(limits,inputData,fractions);
 return
 
 %% Function for ellipse approximation
-function outputData = ellipseApprox(inputData, nPoints)
+function [outputData, params] = ellipseApprox(inputData, nPoints)
 
 nMarkers = size(inputData,1);
 
@@ -175,10 +254,12 @@ theta = linspace(0,pi*2,nPoints+1);
 theta = theta(1:end-1);
 outputData = transpose(repmat(eCenter,1,nPoints) + majAxisLen*(majAxis*cos(theta)) + minAxisLen*(minAxis*sin(theta)));
 
+params = [eCenter' majAxisLen majAxis' minAxisLen minAxis'];
+
 return
 
 %% Function to approximate sleeve shape
-function outputData = sleeveApprox(inputData, bodyData, nPoints)
+function [outputData, params] = sleeveApprox(inputData, bodyData, nPoints)
 
 wrist = bodyData(1,:);
 shoulder = bodyData(2,:);
@@ -195,5 +276,31 @@ p2 = cross(p1,normal);
 theta = linspace(0,2*pi,nPoints+1);
 theta = theta(1:end-1);
 outputData = transpose(repmat(nearPoint',1,nPoints) + minDist*(p1'*sin(theta)) + minDist*(p2'*cos(theta)));
+
+params = [nearPoint minDist];
+
+return
+
+%% Function to approximate centered sleeve shape
+function [outputData, params] = sleeveCenterApprox(points, nPoints)
+
+% centering data and computing center
+center = mean(points,1);
+nMarkers = size(points,1);
+radius = mean(sqrt(sum((points - repmat(center,nMarkers,1)).^2,2)));
+
+% computing normal to points
+dataN = transpose(points - repmat(center,nMarkers,1));
+[U,~,~] = svd(dataN);
+normal = U(:,3);
+
+p1 = (points(1,:)-center)/norm(points(1,:)-center);
+p2 = cross(p1,normal);
+
+theta = linspace(0,2*pi,nPoints+1);
+theta = theta(1:end-1);
+outputData = transpose(repmat(center',1,nPoints) + radius*(p1'*sin(theta)) + radius*(p2'*cos(theta)));
+
+params = [center radius];
 
 return
