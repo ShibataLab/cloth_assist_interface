@@ -29,7 +29,9 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl_ros/point_cloud.h>
+#include <pcl/filters/voxel_grid.h>
 #include <pcl/visualization/cloud_viewer.h>
+#include <pcl/filters/statistical_outlier_removal.h>
 
 // ROS headers
 #include <ros/ros.h>
@@ -57,24 +59,24 @@ class Tracker
 {
   private:
     // mutex for synchronization
-    std::mutex lock;
+    std::mutex _lock;
 
     // important variables to decide functionality
-    const std::string topicColor, topicDepth, topicType;
+    const std::string _topicColor, _topicDepth, _topicType;
+    std::string _topicCameraInfoColor, _topicCameraInfoDepth;
 
     // flags for logic
-    size_t frame;
-    const size_t queueSize;
-    bool running, updateImage;
+    const size_t _queueSize;
+    bool _running, _updateImage;
 
     // opencv parameters
-    cv::Point origin;
-    int width, height;
-    cv::Mat lookupX, lookupY;
-    bool selectObject = false;
-    cv::Mat color, depth, hist;
-    cv::Rect selection, window;
-    cv::Mat cameraMatrixColor, cameraMatrixDepth;
+    cv::Point _origin;
+    int _width, _height;
+    cv::Mat _lookupX, _lookupY;
+    bool _selectObject = false;
+    cv::Mat _color, _depth, _hist;
+    cv::Rect _selection, _window;
+    cv::Mat _cameraMatrixColor, _cameraMatrixDepth;
 
     // synchronization parameters
     // message filters are used to take a message and output it at a different time
@@ -83,36 +85,40 @@ class Tracker
 
     // filters are being used to synchronize 2 image and 2 cameraInfo topics i.e. 4 in total
     // here the typedefs for later use are being defined
-    typedef message_filters::sync_policies::ExactTime<sensor_msgs::Image, sensor_msgs::Image, sensor_msgs::CameraInfo, sensor_msgs::CameraInfo> ExactSyncPolicy;
+    typedef message_filters::sync_policies::ExactTime<sensor_msgs::Image, sensor_msgs::Image, sensor_msgs::CameraInfo, sensor_msgs::CameraInfo> _ExactSyncPolicy;
 
     // ros node parameters
-    ros::NodeHandle nh;
+    ros::NodeHandle _nh;
 
     // AsyncSpinner is used to synchronize multiple threads under the ros framework
     // URL:http://wiki.ros.org/roscpp/Overview/Callbacks%20and%20Spinning#Multi-threaded_Spinning
-    ros::AsyncSpinner spinner;
+    ros::AsyncSpinner _spinner;
 
     // image transport should be used when publishing or subscribing to image topics
     // URL: http://wiki.ros.org/image_transport
-    image_transport::ImageTransport it;
+    image_transport::ImageTransport _it;
 
     // SubscriberFilter is a image transport subscriber that interfaces with message filters
     // it directly sends the image to message filters for further processing.
     // URL: http://docs.ros.org/jade/api/image_transport/html/classimage__transport_1_1SubscriberFilter.html
-    image_transport::SubscriberFilter *subImageColor, *subImageDepth;
+    image_transport::SubscriberFilter *_subImageColor, *_subImageDepth;
 
     // message filters
-    message_filters::Synchronizer<ExactSyncPolicy> *syncExact;
+    message_filters::Synchronizer<_ExactSyncPolicy> *_syncExact;
 
     // creating message filters for the camera info topics
-    message_filters::Subscriber<sensor_msgs::CameraInfo> *subCameraInfoColor, *subCameraInfoDepth;
+    message_filters::Subscriber<sensor_msgs::CameraInfo> *_subCameraInfoColor, *_subCameraInfoDepth;
 
     // create publisher for publishing ros topics as well
-    ros::Publisher pubPointCloud;
+    ros::Publisher _pubPointCloud;
 
-    // std variables
-    std::ostringstream oss;
-    std::vector<int> params;
+    // pcl feature extraction Initialization
+    pcl::PointCloud<pcl::PointXYZ>::Ptr _cloud, _cloudVOG, _cloudSOR, _cloudCentered;
+
+    // feature instances
+    Eigen::Vector4f _centroid;
+    pcl::VoxelGrid<pcl::PointXYZ> _vog;
+    pcl::StatisticalOutlierRemoval<pcl::PointXYZ> _sor;
 
   public:
     // class constructor
@@ -155,7 +161,10 @@ class Tracker
     void createROI(cv::Mat &color, cv::Mat &depth, cv::Mat &backproj, cv::Mat &roi);
 
     // function to build point cloud from roi
-    void createCloud(cv::Mat &roi, pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud);
+    void createCloud(cv::Mat &roi);
+
+    // function to create processor for cloud
+    void processCloud();
 
     // function to create lookup table for obtaining x,y,z values
     void createLookup(size_t width, size_t height);
