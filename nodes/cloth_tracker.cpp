@@ -1,10 +1,9 @@
-// cloth_tracker.cpp: Program to track clothing articles using opencv and pcl
+// cloth_tracker.cpp: Program to track clothing articles
 // Requirements: depends on tracker class files and iai kinect2 bridge
 // Author: Nishanth Koganti
-// Date: 2015/8/22
+// Date: 2015/10/27
 
 // TODO:
-
 
 // tracker class definition
 # include <tracker.h>
@@ -20,7 +19,7 @@ void help(const std::string &path)
 int main(int argc, char **argv)
 {
   // create ros node with a random name to avoid conflicts
-  ros::init(argc, argv, "kinect_wrapper", ros::init_options::AnonymousName);
+  ros::init(argc, argv, "cloth_tracker", ros::init_options::AnonymousName);
 
   // check for failure
   if(!ros::ok())
@@ -28,8 +27,7 @@ int main(int argc, char **argv)
     return 0;
   }
 
-  // create strings for different kinect2 ros topics
-  // ns = kinect2
+  // create default strings for different kinect2 ros topics
   std::string topicType = "sd";
   std::string ns = K2_DEFAULT_NS;
   std::string topicColor = K2_TOPIC_SD K2_TOPIC_IMAGE_COLOR K2_TOPIC_IMAGE_RECT;

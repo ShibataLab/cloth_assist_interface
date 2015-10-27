@@ -2,7 +2,7 @@
 // using the cam shift algorithm and obtain point cloud using pcl functions
 // Requirements: relies on the use of iai kinect2 bridge, opencv and pcl
 // Author: Nishanth Koganti
-// Date: 2015/8/22
+// Date: 2015/10/27
 
 // TODO:
 // 1) Improve point cloud processing using different filters
@@ -11,11 +11,20 @@
 
 // class constructor
 Tracker::Tracker(const std::string &topicColor, const std::string &topicDepth, const std::string &topicType)
-    : topicColor(topicColor), topicDepth(topicDepth), topicType(topicType), updateImage(false), running(false), frame(0), queueSize(5), nh("~"), spinner(0), it(nh)
+    : _topicColor(topicColor), _topicDepth(topicDepth), _topicType(topicType), _updateImage(false), _running(false), _queueSize(5), _nh("~"), _spinner(0), _it(_nh)
 {
   // create matrices for intrinsic parameters
-  cameraMatrixColor = cv::Mat::zeros(3, 3, CV_64F);
-  cameraMatrixDepth = cv::Mat::zeros(3, 3, CV_64F);
+  _cameraMatrixColor = cv::Mat::zeros(3, 3, CV_64F);
+  _cameraMatrixDepth = cv::Mat::zeros(3, 3, CV_64F);
+
+  // set the point cloud processor properties
+  _sor.setMeanK(100);
+  _sor.setStddevMulThresh(0.7);
+  _vog.setLeafSize(0.015f, 0.015f, 0.015f);
+
+  // get the camera info ros topics for color and depth
+  _topicCameraInfoColor = _topicColor.substr(0, _topicColor.rfind('/')) + "/camera_info";
+  _topicCameraInfoDepth = _topicDepth.substr(0, _topicDepth.rfind('/')) + "/camera_info";
 }
 
 // class destructor
@@ -43,57 +52,54 @@ void Tracker::run()
 void Tracker::start()
 {
   // set running flag, will be unset on shutdown
-  running = true;
-
-  // get the camera info ros topics for color and depth
-  std::string topicCameraInfoColor = topicColor.substr(0, topicColor.rfind('/')) + "/camera_info";
-  std::string topicCameraInfoDepth = topicDepth.substr(0, topicDepth.rfind('/')) + "/camera_info";
+  _running = true;
 
   // TransportHints stores the transport settings for the image topic subscriber
   // here we are giving the setting of raw or compressed using the useCompressed variable
   image_transport::TransportHints hints("raw");
 
   // SubscriberFilters are used to subscribe to the kinect image topics
-  subImageColor = new image_transport::SubscriberFilter(it, topicColor, queueSize, hints);
-  subImageDepth = new image_transport::SubscriberFilter(it, topicDepth, queueSize, hints);
+  _subImageColor = new image_transport::SubscriberFilter(_it, _topicColor, _queueSize, hints);
+  _subImageDepth = new image_transport::SubscriberFilter(_it, _topicDepth, _queueSize, hints);
 
   // message filters are used to subscribe to the camera info topics
-  subCameraInfoColor = new message_filters::Subscriber<sensor_msgs::CameraInfo>(nh, topicCameraInfoColor, queueSize);
-  subCameraInfoDepth = new message_filters::Subscriber<sensor_msgs::CameraInfo>(nh, topicCameraInfoDepth, queueSize);
+  _subCameraInfoColor = new message_filters::Subscriber<sensor_msgs::CameraInfo>(_nh, _topicCameraInfoColor, _queueSize);
+  _subCameraInfoDepth = new message_filters::Subscriber<sensor_msgs::CameraInfo>(_nh, _topicCameraInfoDepth, _queueSize);
 
   // create ros publisher
-  pubPointCloud = nh.advertise<pcl::PointCloud<pcl::PointXYZ> > ("/cloth/points", 5);
+  _pubPointCloud = _nh.advertise<pcl::PointCloud<pcl::PointXYZ> > ("/cloth/points", 10);
+  _pubESFDescriptor = _nh.advertise<pcl::PointCloud<pcl::ESFSignature640> > ("/cloth/descriptor", 10);
 
   // creating a exact synchronizer for 4 ros topics with queueSize
   // the Tracker class callback function is set as the callback function
-  syncExact = new message_filters::Synchronizer<ExactSyncPolicy>(ExactSyncPolicy(queueSize), *subImageColor, *subImageDepth, *subCameraInfoColor, *subCameraInfoDepth);
-  syncExact->registerCallback(boost::bind(&Tracker::callback, this, _1, _2, _3, _4));
+  _syncExact = new message_filters::Synchronizer<_ExactSyncPolicy>(_ExactSyncPolicy(_queueSize), *_subImageColor, *_subImageDepth, *_subCameraInfoColor, *_subCameraInfoDepth);
+  _syncExact->registerCallback(boost::bind(&Tracker::callback, this, _1, _2, _3, _4));
 
   // set the width and height parameters for cloth tracking functions
-  if(topicType == "hd")
+  if(_topicType == "hd")
   {
-    this->height = 1080;
-    this->width = 1920;
+    _height = 1080;
+    _width = 1920;
   }
-  else if(topicType == "qhd")
+  else if(_topicType == "qhd")
   {
-    this->height = 540;
-    this->width = 960;
+    _height = 540;
+    _width = 960;
   }
-  else if(topicType == "sd")
+  else if(_topicType == "sd")
   {
-    this->height = 424;
-    this->width = 512;
+    _height = 424;
+    _width = 512;
   }
 
   // from here we start the 4 threads
-  spinner.start();
+  _spinner.start();
 
   // create a chrono instance for 1 millisecond
   std::chrono::milliseconds duration(1);
 
   // if the updateImage flags are not set then we will check for ros shutdown
-  while(!updateImage)
+  while(!_updateImage)
   {
     if(!ros::ok())
     {
@@ -107,17 +113,17 @@ void Tracker::start()
 void Tracker::stop()
 {
   // stop the spinner
-  spinner.stop();
+  _spinner.stop();
 
   // clean up all variables
-  delete syncExact;
+  delete _syncExact;
 
-  delete subImageColor;
-  delete subImageDepth;
-  delete subCameraInfoColor;
-  delete subCameraInfoDepth;
+  delete _subImageColor;
+  delete _subImageDepth;
+  delete _subCameraInfoColor;
+  delete _subCameraInfoDepth;
 
-  running = false;
+  _running = false;
 }
 
 // message filter callback function
@@ -128,8 +134,8 @@ void Tracker::callback(const sensor_msgs::Image::ConstPtr imageColor, const sens
   cv::Mat color, depth;
 
   // get the camera info and images
-  readCameraInfo(cameraInfoColor, cameraMatrixColor);
-  readCameraInfo(cameraInfoDepth, cameraMatrixDepth);
+  readCameraInfo(cameraInfoColor, _cameraMatrixColor);
+  readCameraInfo(cameraInfoDepth, _cameraMatrixDepth);
   readImage(imageColor, color);
   readImage(imageDepth, depth);
 
@@ -142,11 +148,11 @@ void Tracker::callback(const sensor_msgs::Image::ConstPtr imageColor, const sens
   }
 
   // apply mutex and then save the data to class variables
-  lock.lock();
-  this->color = color;
-  this->depth = depth;
-  updateImage = true;
-  lock.unlock();
+  _lock.lock();
+  _color = color;
+  _depth = depth;
+  _updateImage = true;
+  _lock.unlock();
 }
 
 // function to obtain cloth calibration values
@@ -162,16 +168,16 @@ void Tracker::clothCalibrate()
 	cv::setMouseCallback("CamShift", onMouse, (void *)this);
 
 	// get color and depth images
-  for(; running && ros::ok();)
+  for(; _running && ros::ok();)
   {
-    if(updateImage)
+    if(_updateImage)
     {
-      // lock the class variables
-      lock.lock();
-      color = this->color;
-      depth = this->depth;
-      updateImage = false;
-      lock.unlock();
+      // _lock the class variables
+      _lock.lock();
+      color = _color;
+      depth = _depth;
+      _updateImage = false;
+      _lock.unlock();
       break;
     }
   }
@@ -179,13 +185,13 @@ void Tracker::clothCalibrate()
   color.copyTo(disp);
 
   // inifinite for loop
-  for(; running && ros::ok();)
+  for(; _running && ros::ok();)
   {
 		// show the selection
-		if (this->selectObject && this->selection.width > 0 && this->selection.height > 0)
+		if (_selectObject && _selection.width > 0 && _selection.height > 0)
 		{
 			color.copyTo(disp);
-			cv::Mat roi(disp, selection);
+			cv::Mat roi(disp, _selection);
 			cv::bitwise_not(roi, roi);
 		}
 
@@ -218,14 +224,14 @@ void Tracker::clothCalibrate()
 	const float* phranges = hranges;
 
 	// get the ROIs from the mask, hue images
-	cv::Mat roi(hue, this->selection), maskroi(mask, this->selection);
+	cv::Mat roi(hue, _selection), maskroi(mask, _selection);
 
 	// compute the histogram and normaize the histogram
-	cv::calcHist(&roi, 1, 0, maskroi, this->hist, 1, &hsize, &phranges);
-	cv::normalize(this->hist, this->hist, 0, 255, cv::NORM_MINMAX);
+	cv::calcHist(&roi, 1, 0, maskroi, _hist, 1, &hsize, &phranges);
+	cv::normalize(_hist, _hist, 0, 255, cv::NORM_MINMAX);
 
 	// track window initialization
-	this->window = this->selection;
+	_window = _selection;
 }
 
 // function to display images
@@ -241,31 +247,29 @@ void Tracker::clothTracker()
   // more variables for printing text and other functions
   double fps = 0;
   size_t frameCount = 0;
-  std::ostringstream oss;
 
   // create named windows for displaying color and backprojection images
   cv::namedWindow("Color");
   cv::namedWindow("Backproj");
 
   // pcl initialization
-  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
   pcl::visualization::CloudViewer viewer("Cloth Point Cloud");
 
   // obtain starting time point
   start = std::chrono::high_resolution_clock::now();
 
   // inifinite for loop
-  for(; running && ros::ok();)
+  for(; _running && ros::ok();)
   {
     // check for image update
-    if(updateImage)
+    if(_updateImage)
     {
-      // lock the class variables
-      lock.lock();
-      color = this->color;
-      depth = this->depth;
-      updateImage = false;
-      lock.unlock();
+      // _lock the class variables
+      _lock.lock();
+      color = _color;
+      depth = _depth;
+      _updateImage = false;
+      _lock.unlock();
 
       ++frameCount;
 
@@ -276,8 +280,7 @@ void Tracker::clothTracker()
       if(elapsed >= 1.0)
       {
         fps = frameCount / elapsed;
-        oss.str("");
-        oss << "fps: " << fps << " ( " << elapsed / frameCount * 1000.0 << " ms)";
+        std::cout << fps << std::endl;
         start = now;
         frameCount = 0;
       }
@@ -286,32 +289,28 @@ void Tracker::clothTracker()
       createROI(color, depth, backproj, roi);
 
       // initialize cloud
-      cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
-
-      // set cloud parameters
-      cloud->header.frame_id = "cloth_frame";
-      cloud->width = roi.cols;
-      cloud->height = roi.rows;
-
-      cloud->is_dense = false;
-      cloud->points.resize(cloud->height * cloud->width);
+      _cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
 
       // create lookup tables for x and y mappings
-      createLookup(this->width, this->height);
+      createLookup(_width, _height);
 
       // function to create point cloud and obtain
-      createCloud(roi, cloud);
+      createCloud(roi);
+
+      // function to process the point cloud
+      processCloud();
 
       // publish the point cloud message
-      pubPointCloud.publish(cloud);
+      _pubESFDescriptor.publish(_cloudESF);
+      _pubPointCloud.publish(_cloudCentered);
 
       // show image
       cv::imshow("Color", color);
       cv::imshow("Backproj", backproj);
 
       // display point cloud
-      if (cloud->size() > 0)
-        viewer.showCloud(cloud);
+      if (_cloud->size() > 0)
+        viewer.showCloud(_cloudCentered);
     }
 
     // wait for key press
@@ -322,7 +321,7 @@ void Tracker::clothTracker()
     {
       case 27:
       case 'q':
-        running = false;
+        _running = false;
         break;
       case ' ':
         break;
@@ -330,6 +329,7 @@ void Tracker::clothTracker()
   }
 
   // destroy all windows and shutdown
+  std::cout << std::endl;
   cv::destroyAllWindows();
   cv::waitKey(100);
 }
@@ -345,16 +345,10 @@ void Tracker::createROI(cv::Mat &color, cv::Mat &depth, cv::Mat &backproj, cv::M
   const float* phranges = hranges;
   cv::Mat hsv, hue, mask, hist, pcImg, pcMask;
 
-  // variables for text
-  const int lineText = 1;
-  const cv::Point pos(5, 15);
-  const double sizeText = 0.5;
-  const int font = cv::FONT_HERSHEY_SIMPLEX;
-  const cv::Scalar colorText = CV_RGB(255, 255, 255);
-
   // initialize the calibration values
-  hist = this->hist;
-  window = this->window;
+  hist = _hist;
+  window = _window;
+  color = _color;
 
   // perform color extraction
   cv::cvtColor(color, hsv, CV_BGR2HSV);
@@ -377,17 +371,13 @@ void Tracker::createROI(cv::Mat &color, cv::Mat &depth, cv::Mat &backproj, cv::M
 
   // reinitialize track window
   if (window.area() <= 1)
-    window = cv::Rect(0, 0, this->width, this->height);
-  this->window = window;
+    window = cv::Rect(0, 0, _width, _height);
+  _window = window;
 
   window = cv::Rect(window.x - 15, window.y - 15, window.width + 15, window.height + 15);
 
   // draw rectangles around highlighted areas
   cv::rectangle(color, window.tl(), window.br(), cv::Scalar(255, 255, 255), 2, CV_AA);
-
-  // put text in the image
-  cv::putText(color, oss.str(), pos, font, sizeText, colorText, lineText, CV_AA);
-  cv::putText(backproj, oss.str(), pos, font, sizeText, colorText, lineText, CV_AA);
 
   roi.release();
 
@@ -397,10 +387,18 @@ void Tracker::createROI(cv::Mat &color, cv::Mat &depth, cv::Mat &backproj, cv::M
 }
 
 // function to create point cloud from extracted ROI
-void Tracker::createCloud(cv::Mat &roi, pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud)
+void Tracker::createCloud(cv::Mat &roi)
 {
+  // set cloud parameters
+  _cloud->header.frame_id = "cloth_frame";
+  _cloud->width = roi.cols;
+  _cloud->height = roi.rows;
+
+  _cloud->is_dense = false;
+  _cloud->points.resize(_cloud->height * _cloud->width);
+
   // variables
-  cv::Rect window = this->window;
+  cv::Rect window = _window;
   const float badPoint = std::numeric_limits<float>::quiet_NaN();
 
   // parallel processing of pixel values
@@ -408,14 +406,14 @@ void Tracker::createCloud(cv::Mat &roi, pcl::PointCloud<pcl::PointXYZ>::Ptr &clo
   for(int r = 0; r < roi.rows; ++r)
   {
     // create row of Points
-    pcl::PointXYZ *itP = &cloud->points[r * roi.cols];
+    pcl::PointXYZ *itP = &_cloud->points[r * roi.cols];
 
     // get pointer to row in depth image
     const uint16_t *itD = roi.ptr<uint16_t>(r);
 
     // get the x and y values
-    const float y = lookupY.at<float>(0, window.y+r);
-    const float *itX = lookupX.ptr<float>();
+    const float y = _lookupY.at<float>(0, window.y+r);
+    const float *itX = _lookupX.ptr<float>();
     itX = itX + window.x;
 
     // convert all the depth values in the depth image to Points in point cloud
@@ -439,6 +437,31 @@ void Tracker::createCloud(cv::Mat &roi, pcl::PointCloud<pcl::PointXYZ>::Ptr &clo
   }
 }
 
+// function to process point cloud
+void Tracker::processCloud()
+{
+  // create new instance of the point cloud
+  _cloudVOG = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
+  _cloudSOR = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
+  _cloudCentered = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
+  _cloudESF = pcl::PointCloud<pcl::ESFSignature640>::Ptr(new pcl::PointCloud<pcl::ESFSignature640>());
+
+  // process the point cloud
+  _vog.setInputCloud(_cloud);
+  _vog.filter(*_cloudVOG);
+
+  _sor.setInputCloud(_cloudVOG);
+  _sor.filter(*_cloudSOR);
+
+  // Center point cloud
+  pcl::compute3DCentroid(*_cloudSOR, _centroid);
+  pcl::demeanPointCloud(*_cloudSOR, _centroid, *_cloudCentered);
+
+  // Compute ESF descriptor
+  _esf.setInputCloud(_cloudCentered);
+  _esf.compute(*_cloudESF);
+}
+
 // mouse click callback function for T-shirt color calibration
 void Tracker::onMouse(int event, int x, int y, int flags, void* param)
 {
@@ -447,24 +470,24 @@ void Tracker::onMouse(int event, int x, int y, int flags, void* param)
   // URL: http://stackoverflow.com/questions/14062501/giving-callback-function-access-to-class-data-members-in-c
   Tracker* ptr = (Tracker*) param;
 
-	if (ptr->selectObject)
+	if (ptr->_selectObject)
 	{
-		ptr->selection.x = std::min(x, ptr->origin.x);
-		ptr->selection.y = std::min(y, ptr->origin.y);
-		ptr->selection.width = std::abs(x - ptr->origin.x);
-		ptr->selection.height = std::abs(y - ptr->origin.y);
-		ptr->selection &= cv::Rect(0, 0, ptr->width, ptr->height);
+		ptr->_selection.x = std::min(x, ptr->_origin.x);
+		ptr->_selection.y = std::min(y, ptr->_origin.y);
+		ptr->_selection.width = std::abs(x - ptr->_origin.x);
+		ptr->_selection.height = std::abs(y - ptr->_origin.y);
+		ptr->_selection &= cv::Rect(0, 0, ptr->_width, ptr->_height);
 	}
 
 	switch (event)
 	{
 	case cv::EVENT_LBUTTONDOWN:
-		ptr->origin = cv::Point(x, y);
-		ptr->selection = cv::Rect(x, y, 0, 0);
-		ptr->selectObject = true;
+		ptr->_origin = cv::Point(x, y);
+		ptr->_selection = cv::Rect(x, y, 0, 0);
+		ptr->_selectObject = true;
 		break;
 	case cv::EVENT_LBUTTONUP:
-		ptr->selectObject = false;
+		ptr->_selectObject = false;
 		break;
 	}
 }
@@ -497,25 +520,25 @@ void Tracker::readCameraInfo(const sensor_msgs::CameraInfo::ConstPtr cameraInfo,
 void Tracker::createLookup(size_t width, size_t height)
 {
   // get the values from the camera matrix of intrinsic parameters
-  const float fx = 1.0f / cameraMatrixColor.at<double>(0, 0);
-  const float fy = 1.0f / cameraMatrixColor.at<double>(1, 1);
-  const float cx = cameraMatrixColor.at<double>(0, 2);
-  const float cy = cameraMatrixColor.at<double>(1, 2);
+  const float fx = 1.0f / _cameraMatrixColor.at<double>(0, 0);
+  const float fy = 1.0f / _cameraMatrixColor.at<double>(1, 1);
+  const float cx = _cameraMatrixColor.at<double>(0, 2);
+  const float cy = _cameraMatrixColor.at<double>(1, 2);
 
   // float iterator
   float *it;
 
   // lookup table for y pixel locations
-  lookupY = cv::Mat(1, height, CV_32F);
-  it = lookupY.ptr<float>();
+  _lookupY = cv::Mat(1, height, CV_32F);
+  it = _lookupY.ptr<float>();
   for(size_t r = 0; r < height; ++r, ++it)
   {
     *it = (r - cy) * fy;
   }
 
   // lookup table for x pixel locations
-  lookupX = cv::Mat(1, width, CV_32F);
-  it = lookupX.ptr<float>();
+  _lookupX = cv::Mat(1, width, CV_32F);
+  it = _lookupX.ptr<float>();
   for(size_t c = 0; c < width; ++c, ++it)
   {
     *it = (c - cx) * fx;
