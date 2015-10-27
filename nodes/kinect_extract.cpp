@@ -59,7 +59,7 @@ int main(int argc, char **argv)
   // filename default
   char c;
   std::string fileName, calibName;
-  char cloudName[200], esfName[200], vfhName[200], centerName[200], filterName[200];
+  char cloudName[200], esfName[200], vfhName[200], centerName[200];
 
   // printing help information
   if(argc != 3)
@@ -74,17 +74,19 @@ int main(int argc, char **argv)
     calibName = argv[2];
   }
 
+  // add flag for process mode
+  // edit this flag to apply transform or not
+  bool processMode = false;
+
   // create fileNames for different output files
   sprintf(esfName, "../%sESF", fileName.c_str());
   sprintf(vfhName, "../%sVFH", fileName.c_str());
   sprintf(cloudName, "%sCloud.bag", fileName.c_str());
   sprintf(centerName, "../%sCentered", fileName.c_str());
-  sprintf(filterName, "../%sFiltered", fileName.c_str());
 
   ofstream esfDat(esfName, ofstream::out);
   ofstream vfhDat(vfhName, ofstream::out);
 	ofstream centerDat(centerName, ofstream::out);
-  ofstream filterDat(filterName, ofstream::out);
 
   // initializing color and depth topic names
   std::string topicCloud = "/cloth/cloud";
@@ -107,7 +109,7 @@ int main(int argc, char **argv)
   // std::cin >> c;
 
   // pcl point cloud
-  pcl::visualization::CloudViewer viewer("Feature Extraction");
+  // pcl::visualization::CloudViewer viewer("Feature Extraction");
 
   // pcl feature extraction Initialization
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>());
@@ -137,7 +139,7 @@ int main(int argc, char **argv)
   ne.setSearchMethod(neTree);
   sor.setStddevMulThresh(0.7);
   vfh.setSearchMethod(vfhTree);
-  vog.setLeafSize(0.005f, 0.005f, 0.005f);
+  vog.setLeafSize(0.015f, 0.015f, 0.015f);
 
   // ros time init
   ros::Time::init();
@@ -167,11 +169,20 @@ int main(int argc, char **argv)
     sor.setInputCloud(cloudVOG);
     sor.filter(*cloudSOR);
 
-    pcl::transformPointCloud(*cloudSOR, *cloudTransform, transform);
+    if (processMode)
+    {
+      pcl::transformPointCloud(*cloudSOR, *cloudTransform, transform);
 
-    // Center point cloud
-    pcl::compute3DCentroid(*cloudTransform, centroid);
-    pcl::demeanPointCloud(*cloudTransform, centroid, *cloudCentered);
+      // Center point cloud
+      pcl::compute3DCentroid(*cloudTransform, centroid);
+      pcl::demeanPointCloud(*cloudTransform, centroid, *cloudCentered);
+    }
+    else
+    {
+      // Center point cloud
+      pcl::compute3DCentroid(*cloudSOR, centroid);
+      pcl::demeanPointCloud(*cloudSOR, centroid, *cloudCentered);
+    }
 
     // Normal Estimation
     ne.setInputCloud(cloudCentered);
@@ -200,23 +211,18 @@ int main(int argc, char **argv)
     for (int i = 0; i < cloudCentered->size(); i++)
       centerDat << cloudCentered->points[i].x << "," << cloudCentered->points[i].y << "," << cloudCentered->points[i].z << endl;
 
-    filterDat << tPass.toSec() << "," << cloudTransform->size() << endl;
-    for (int i = 0; i < cloudTransform->size(); i++)
-      filterDat << cloudTransform->points[i].x << "," << cloudTransform->points[i].y << "," << cloudTransform->points[i].z << endl;
-
-    viewer.showCloud(cloudCentered);
+    // viewer.showCloud(cloudCentered);
     std::cout << "Frame: " << frame << ", Time: " << tPass.toSec() << std::endl;
     std::cout << "Cloud: " << cloud->size() << ", VOG: " << cloudVOG->size() << ", SOR: " << cloudSOR->size() << ", VFH: " << vfhs->points.size() << ", ESF: " << esfs->points.size() << endl;
     frame++;
 
-    rate.sleep();
+    // rate.sleep();
   }
 
   bag.close();
   esfDat.close();
   vfhDat.close();
   centerDat.close();
-  filterDat.close();
 
   // clean shutdown
   ros::shutdown();
