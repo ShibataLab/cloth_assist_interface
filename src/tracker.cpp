@@ -20,7 +20,7 @@ Tracker::Tracker(const std::string &topicColor, const std::string &topicDepth, c
   // set the point cloud processor properties
   _sor.setMeanK(100);
   _sor.setStddevMulThresh(0.7);
-  _vog.setLeafSize(0.005f, 0.005f, 0.005f);
+  _vog.setLeafSize(0.015f, 0.015f, 0.015f);
 
   // get the camera info ros topics for color and depth
   _topicCameraInfoColor = _topicColor.substr(0, _topicColor.rfind('/')) + "/camera_info";
@@ -289,7 +289,6 @@ void Tracker::clothTracker()
 
       // initialize cloud
       _cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
-      _cloudCentered = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
 
       // create lookup tables for x and y mappings
       createLookup(_width, _height);
@@ -298,10 +297,10 @@ void Tracker::clothTracker()
       createCloud(roi);
 
       // function to process the point cloud
-      // processCloud();
+      processCloud();
 
       // publish the point cloud message
-      _pubPointCloud.publish(_cloud);
+      _pubPointCloud.publish(_cloudCentered);
 
       // show image
       cv::imshow("Color", color);
@@ -309,7 +308,7 @@ void Tracker::clothTracker()
 
       // display point cloud
       if (_cloud->size() > 0)
-        viewer.showCloud(_cloud);
+        viewer.showCloud(_cloudCentered);
     }
 
     // wait for key press
@@ -434,6 +433,26 @@ void Tracker::createCloud(cv::Mat &roi)
       itP->y = y * depthValue;
     }
   }
+}
+
+// function to process point cloud
+void Tracker::processCloud()
+{
+  // create new instance of the point cloud
+  _cloudVOG = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
+  _cloudSOR = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
+  _cloudCentered = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
+
+  // process the point cloud
+  _vog.setInputCloud(_cloud);
+  _vog.filter(*_cloudVOG);
+
+  _sor.setInputCloud(_cloudVOG);
+  _sor.filter(*_cloudSOR);
+
+  // Center point cloud
+  pcl::compute3DCentroid(*_cloudSOR, _centroid);
+  pcl::demeanPointCloud(*_cloudSOR, _centroid, *_cloudCentered);
 }
 
 // mouse click callback function for T-shirt color calibration
