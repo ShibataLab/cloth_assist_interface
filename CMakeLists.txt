@@ -19,7 +19,8 @@ ELSE()
   MESSAGE(ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
 ENDIF()
 
-find_package(catkin
+find_package(
+  catkin
   REQUIRED
   COMPONENTS
   roscpp
@@ -37,11 +38,18 @@ find_package(catkin
   baxter_core_msgs
   baxter_interface
   control_msgs
-  actionlib)
+  actionlib
+  message_generation)
 
 find_package(PCL REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(OpenMP REQUIRED)
+
+## MSG Files
+add_message_files(
+  FILES
+  TopCoord.msg
+)
 
 catkin_python_setup()
 
@@ -49,8 +57,14 @@ if(OPENMP_FOUND)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 endif()
 
+generate_messages(
+  DEPENDENCIES
+  std_msgs)
+
 ## catkin specific configuration ##
-catkin_package(INCLUDE_DIRS include)
+catkin_package(
+  INCLUDE_DIRS include
+  CATKIN_DEPENDS message_runtime)
 
 ## Build
 
