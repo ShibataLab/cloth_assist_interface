@@ -1,0 +1,290 @@
+{
+  "keys": {}, 
+  "groups": {
+    "pluginmanager": {
+      "keys": {
+        "running-plugins": {
+          "type": "repr", 
+          "repr": "{u'rqt_rviz/RViz': [1], u'rqt_plot/Plot': [4, 3, 2, 1]}"
+        }
+      }, 
+      "groups": {
+        "plugin__rqt_py_console__PyConsole__1": {
+          "keys": {}, 
+          "groups": {
+            "plugin": {
+              "keys": {
+                "use_spyderlib": {
+                  "type": "repr", 
+                  "repr": "u'false'"
+                }
+              }, 
+              "groups": {}
+            }
+          }
+        }, 
+        "plugin__rqt_rviz__RViz__1": {
+          "keys": {}, 
+          "groups": {
+            "dock_widget__": {
+              "keys": {
+                "dockable": {
+                  "type": "repr", 
+                  "repr": "True"
+                }, 
+                "parent": {
+                  "type": "repr", 
+                  "repr": "None"
+                }
+              }, 
+              "groups": {}
+            }
+          }
+        }, 
+        "plugin__rqt_plot__Plot__1": {
+          "keys": {}, 
+          "groups": {
+            "dock_widget__DataPlotWidget": {
+              "keys": {
+                "dockable": {
+                  "type": "repr", 
+                  "repr": "True"
+                }, 
+                "parent": {
+                  "type": "repr", 
+                  "repr": "None"
+                }
+              }, 
+              "groups": {}
+            }, 
+            "plugin": {
+              "keys": {
+                "autoscroll": {
+                  "type": "repr", 
+                  "repr": "True"
+                }, 
+                "plot_type": {
+                  "type": "repr", 
+                  "repr": "1"
+                }, 
+                "topics": {
+                  "type": "repr", 
+                  "repr": "u'/cloth/topCoord/collarHead'"
+                }, 
+                "y_limits": {
+                  "type": "repr", 
+                  "repr": "[-17.084747314453125, 1.0]"
+                }, 
+                "x_limits": {
+                  "type": "repr", 
+                  "repr": "[355.15647196769714, 356.15647196769714]"
+                }
+              }, 
+              "groups": {}
+            }
+          }
+        }, 
+        "plugin__rqt_plot__Plot__2": {
+          "keys": {}, 
+          "groups": {
+            "dock_widget__DataPlotWidget": {
+              "keys": {
+                "dockable": {
+                  "type": "repr", 
+                  "repr": "True"
+                }, 
+                "parent": {
+                  "type": "repr", 
+                  "repr": "None"
+                }
+              }, 
+              "groups": {}
+            }, 
+            "plugin": {
+              "keys": {
+                "autoscroll": {
+                  "type": "repr", 
+                  "repr": "True"
+                }, 
+                "plot_type": {
+                  "type": "repr", 
+                  "repr": "1"
+                }, 
+                "topics": {
+                  "type": "repr", 
+                  "repr": "u'/cloth/topCoord/collarBody'"
+                }, 
+                "y_limits": {
+                  "type": "repr", 
+                  "repr": "[0.000739022348188012, 1.5493634563640217]"
+                }, 
+                "x_limits": {
+                  "type": "repr", 
+                  "repr": "[355.5330573468515, 356.26751685142517]"
+                }
+              }, 
+              "groups": {}
+            }
+          }
+        }, 
+        "plugin__rqt_plot__Plot__3": {
+          "keys": {}, 
+          "groups": {
+            "dock_widget__DataPlotWidget": {
+              "keys": {
+                "dockable": {
+                  "type": "repr", 
+                  "repr": "True"
+                }, 
+                "parent": {
+                  "type": "repr", 
+                  "repr": "None"
+                }
+              }, 
+              "groups": {}
+            }, 
+            "plugin": {
+              "keys": {
+                "autoscroll": {
+                  "type": "repr", 
+                  "repr": "True"
+                }, 
+                "plot_type": {
+                  "type": "repr", 
+                  "repr": "1"
+                }, 
+                "topics": {
+                  "type": "repr", 
+                  "repr": "u'/cloth/topCoord/rightSleeve'"
+                }, 
+                "y_limits": {
+                  "type": "repr", 
+                  "repr": "[-8.213695526123047, 4.349438190460205]"
+                }, 
+                "x_limits": {
+                  "type": "repr", 
+                  "repr": "[355.3732829093933, 356.3732829093933]"
+                }
+              }, 
+              "groups": {}
+            }
+          }
+        }, 
+        "plugin__rqt_plot__Plot__4": {
+          "keys": {}, 
+          "groups": {
+            "dock_widget__DataPlotWidget": {
+              "keys": {
+                "dockable": {
+                  "type": "repr", 
+                  "repr": "True"
+                }, 
+                "parent": {
+                  "type": "repr", 
+                  "repr": "None"
+                }
+              }, 
+              "groups": {}
+            }, 
+            "plugin": {
+              "keys": {
+                "autoscroll": {
+                  "type": "repr", 
+                  "repr": "True"
+                }, 
+                "plot_type": {
+                  "type": "repr", 
+                  "repr": "1"
+                }, 
+                "topics": {
+                  "type": "repr", 
+                  "repr": "u'/cloth/topCoord/leftSleeve'"
+                }, 
+                "y_limits": {
+                  "type": "repr", 
+                  "repr": "[-8.039835929870605, 4.2839579582214355]"
+                }, 
+                "x_limits": {
+                  "type": "repr", 
+                  "repr": "[355.55369091033936, 356.55369091033936]"
+                }
+              }, 
+              "groups": {}
+            }
+          }
+        }, 
+        "plugin__rqt_robot_monitor__RobotMonitor__1": {
+          "keys": {}, 
+          "groups": {
+            "plugin": {
+              "keys": {
+                "splitter": {
+                  "type": "repr(QByteArray.hex)", 
+                  "repr(QByteArray.hex)": "QtCore.QByteArray('000000ff00000000000000030000006400000064000000c801000000090100000002')", 
+                  "pretty-print": "       d d       "
+                }
+              }, 
+              "groups": {}
+            }
+          }
+        }, 
+        "plugin__rqt_tf_tree__RosTfTree__1": {
+          "keys": {}, 
+          "groups": {
+            "dock_widget__RosTfTreeUi": {
+              "keys": {
+                "dockable": {
+                  "type": "repr", 
+                  "repr": "u'true'"
+                }, 
+                "parent": {
+                  "type": "repr", 
+                  "repr": "None"
+                }
+              }, 
+              "groups": {}
+            }, 
+            "plugin": {
+              "keys": {
+                "highlight_connections_check_box_state": {
+                  "type": "repr", 
+                  "repr": "u'true'"
+                }, 
+                "auto_fit_graph_check_box_state": {
+                  "type": "repr", 
+                  "repr": "u'true'"
+                }
+              }, 
+              "groups": {}
+            }
+          }
+        }
+      }
+    }, 
+    "mainwindow": {
+      "keys": {
+        "geometry": {
+          "type": "repr(QByteArray.hex)", 
+          "repr(QByteArray.hex)": "QtCore.QByteArray('01d9d0cb0001000000000037fffffff2000007890000049d00000041000000180000077f000004af000000000000')", 
+          "pretty-print": "     7       A         "
+        }, 
+        "state": {
+          "type": "repr(QByteArray.hex)", 
+          "repr(QByteArray.hex)": "QtCore.QByteArray('000000ff00000000fd00000001000000030000073f00000469fc0100000006fb0000003c007200710074005f00700079005f0063006f006e0073006f006c0065005f005f005000790043006f006e0073006f006c0065005f005f0031005f005f0100000000000000cf0000000000000000fb0000004c007200710074005f00740066005f0074007200650065005f005f0052006f0073005400660054007200650065005f005f0031005f005f0052006f0073005400660054007200650065005500690100000000000002830000000000000000fb00000062007200710074005f0072006f0062006f0074005f006d006f006e00690074006f0072005f005f0052006f0062006f0074004d006f006e00690074006f0072005f005f0031005f005f0052006f0062006f00740020004d006f006e00690074006f007201000000000000073f0000000000000000fc00000000000002230000017700fffffffc0200000002fb00000042007200710074005f0070006c006f0074005f005f0050006c006f0074005f005f0031005f005f00440061007400610050006c006f00740057006900640067006500740100000019000002340000008c00fffffffb00000042007200710074005f0070006c006f0074005f005f0050006c006f0074005f005f0034005f005f00440061007400610050006c006f007400570069006400670065007401000002530000022f0000008c00fffffffc000002290000021a0000017700fffffffc0200000002fb00000042007200710074005f0070006c006f0074005f005f0050006c006f0074005f005f0032005f005f00440061007400610050006c006f00740057006900640067006500740100000019000002340000008c00fffffffb00000042007200710074005f0070006c006f0074005f005f0050006c006f0074005f005f0033005f005f00440061007400610050006c006f007400570069006400670065007401000002530000022f0000008c00fffffffb00000026007200710074005f007200760069007a005f005f005200560069007a005f005f0031005f005f0100000449000002f6000002f600ffffff0000073f0000000000000004000000040000000800000008fc00000001000000030000000100000036004d0069006e0069006d0069007a006500640044006f0063006b00570069006400670065007400730054006f006f006c0062006100720000000000ffffffff0000000000000000')", 
+          "pretty-print": "                 <rqt_py_console__PyConsole__1__          Lrqt_tf_tree__RosTfTree__1__RosTfTreeUi          brqt_robot_monitor__RobotMonitor__1__Robot Monitor            # w                                            4                                         S /                 Brqt_plot__Plot__2__DataPlotWidget          Brqt_plot__Plot__3__DataPlotWidget          &rqt_rviz__RViz__1__                            6MinimizedDockWidgetsToolbar        "
+        }
+      }, 
+      "groups": {
+        "toolbar_areas": {
+          "keys": {
+            "MinimizedDockWidgetsToolbar": {
+              "type": "repr", 
+              "repr": "8"
+            }
+          }, 
+          "groups": {}
+        }
+      }
+    }
+  }
+}
