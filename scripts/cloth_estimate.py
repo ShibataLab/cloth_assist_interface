@@ -15,8 +15,10 @@ import rospy
 import random
 import argparse
 import numpy as np
+import scipy as sp
 import message_filters
 import cPickle as pickle
+from scipy import signal
 from std_msgs.msg import Header
 import matplotlib.pyplot as plt
 from Interface.msg import TopCoord
@@ -44,7 +46,7 @@ topCoordModel = pickle.load(open("topCoordModel.p","rb"))
 class ClothEstimator():
 
     # main function
-    def __init__(self, nMarkers = None):
+    def __init__(self, nMarkers = 12, filtLength = 10):
         # initialize node and setup subscriber
         rospy.init_node('cloth_estimator', anonymous=True)
 
@@ -55,15 +57,18 @@ class ClothEstimator():
         ts = message_filters.TimeSynchronizer([cloudSub, esfSub], 10)
         ts.registerCallback(self.cloudCallback)
 
+        # variables for top coord filtering
+        self.filtLength = filtLength
+        self.rawData = np.zeros((0,4))
+        self.filterData = np.zeros((filtLength+1,4))
+        self.topCoordRaw = np.zeros((1,4))
+
         # create the rospy publisher for marker positions
         self.markerPub = rospy.Publisher('/cloth/markers', PointCloud2, queue_size=10)
         self.topCoordPub = rospy.Publisher('/cloth/topCoord', TopCoord, queue_size=10)
 
         # marker points
-        if nMarkers == None:
-            self.nMarkers = 12
-        else:
-            self.nMarkers = nMarkers
+        self.nMarkers = nMarkers
 
         # start subscribing
         rospy.spin()
@@ -93,29 +98,28 @@ class ClothEstimator():
             [xPredict2, infX2] = topCoordModel.Y0.infer_newX(yIn, optimize=False)
             topCoordOut = topCoordModel.predict(xPredict2.mean, Yindex=1)
 
+            self.topCoordRaw[0,:] = topCoordOut[0][0,[1,2,5,7]]
+            self.rawData = np.vstack((self.rawData,self.topCoordRaw))
+
+            if self.rawData.shape[0] == self.filtLength+1:
+                for ind in range(4):
+                    self.filterData[:,ind] = sp.signal.medfilt(self.rawData[:,ind], kernel_size=self.filtLength)
+                self.rawData = np.delete(self.rawData,0,0)
+
             topCoord = TopCoord()
             topCoord.header = header
-            topCoord.collarHead = topCoordOut[0][0,1]
-            topCoord.collarBody = topCoordOut[0][0,2]
-            topCoord.leftSleeve = topCoordOut[0][0,5]
-            topCoord.rightSleeve = topCoordOut[0][0,7]
+            topCoord.collarHead = self.filterData[-1,0]
+            topCoord.collarBody = self.filterData[-1,1]
+            topCoord.leftSleeve = self.filterData[-1,2]
+            topCoord.rightSleeve = self.filterData[-1,3]
 
             self.topCoordPub.publish(topCoord)
         else:
             print "Error!"
 
-        # esfViz.modify(yIn)
-        # markerViz.modify(yOut[0])
-        # plt.draw()
-
-        # plot the current cloud and predicted marker positions
-        # ind = random.sample(xrange(cloud.shape[0]),nPlotPoints)
-        # cloud = np.reshape(cloud[ind,:], (nPlotPoints*3,1))
-        # cloudViz.modify(cloud)
-
 def main():
 
-    ce = ClothEstimator()
+    ce = ClothEstimator(filtLength=9)
 
 # main function
 if __name__ == '__main__':
