@@ -67,6 +67,7 @@ void Tracker::start()
   _subCameraInfoDepth = new message_filters::Subscriber<sensor_msgs::CameraInfo>(_nh, _topicCameraInfoDepth, _queueSize);
 
   // create ros publisher
+  _pubTrackImage = _it.advertise("/cloth/image", 10);
   _pubPointCloud = _nh.advertise<pcl::PointCloud<pcl::PointXYZ> > ("/cloth/points", 10);
   _pubESFDescriptor = _nh.advertise<pcl::PointCloud<pcl::ESFSignature640> > ("/cloth/descriptor", 10);
 
@@ -249,11 +250,11 @@ void Tracker::clothTracker()
   size_t frameCount = 0;
 
   // create named windows for displaying color and backprojection images
-  cv::namedWindow("Color");
-  cv::namedWindow("Backproj");
+  // cv::namedWindow("Color");
+  // cv::namedWindow("Backproj");
 
   // pcl initialization
-  pcl::visualization::CloudViewer viewer("Cloth Point Cloud");
+  // pcl::visualization::CloudViewer viewer("Cloth Point Cloud");
 
   // obtain starting time point
   start = std::chrono::high_resolution_clock::now();
@@ -288,9 +289,6 @@ void Tracker::clothTracker()
       // function to extract image roi from color and depth functions
       createROI(color, depth, backproj, roi);
 
-      // initialize cloud
-      _cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
-
       // create lookup tables for x and y mappings
       createLookup(_width, _height);
 
@@ -300,17 +298,21 @@ void Tracker::clothTracker()
       // function to process the point cloud
       processCloud();
 
+      // create color image msg
+      sensor_msgs::ImagePtr colorMsg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", color).toImageMsg();
+
       // publish the point cloud message
+      _pubTrackImage.publish(colorMsg);
       _pubESFDescriptor.publish(_cloudESF);
       _pubPointCloud.publish(_cloudCentered);
 
       // show image
-      cv::imshow("Color", color);
-      cv::imshow("Backproj", backproj);
+      // cv::imshow("Color", color);
+      // cv::imshow("Backproj", backproj);
 
       // display point cloud
-      if (_cloud->size() > 0)
-        viewer.showCloud(_cloudCentered);
+      // if (_cloud->size() > 0)
+      //   viewer.showCloud(_cloudCentered);
     }
 
     // wait for key press
@@ -389,8 +391,11 @@ void Tracker::createROI(cv::Mat &color, cv::Mat &depth, cv::Mat &backproj, cv::M
 // function to create point cloud from extracted ROI
 void Tracker::createCloud(cv::Mat &roi)
 {
+  // initialize cloud
+  _cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
+  
   // set cloud parameters
-  _cloud->header.frame_id = "cloth_frame";
+  _cloud->header.frame_id = "kinect2_link";
   _cloud->width = roi.cols;
   _cloud->height = roi.rows;
 

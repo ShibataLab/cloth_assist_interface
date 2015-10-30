@@ -114,6 +114,7 @@ class Tracker
     // create publisher for publishing ros topics as well
     ros::Publisher _pubPointCloud;
     ros::Publisher _pubESFDescriptor;
+    image_transport::Publisher _pubTrackImage;
 
     // pcl feature extraction Initialization
     pcl::PointCloud<pcl::PointXYZ>::Ptr _cloud, _cloudVOG, _cloudSOR, _cloudCentered;
