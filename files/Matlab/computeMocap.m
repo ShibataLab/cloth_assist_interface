@@ -1,6 +1,6 @@
 % computeMocap.m: Program to plot motion capture data 
 % Author: Nishanth
-% Date: 2015/9/19
+% Date: 2015/11/02
 
 % TODO:
 % 1) Implement in python
@@ -8,7 +8,7 @@
 function computeMocap(trackName, mocapName, postureName)
 
 % set the flag names
-plotFlag = 2;
+plotFlag = 1;
 printFlag = false;
 
 % parse the track file and mocap data
@@ -23,6 +23,7 @@ nMarkers = 12;
 nBodyPoints = 20;
 nSleevePoints = 20;
 nCollarPoints = 40;
+markerDownfactor = 1/4;
 nSamples = size(kinectData,1);
 
 % compute mocap data corresponding to kinect tracks
@@ -44,10 +45,10 @@ end
 % variables for features
 
 topCoordData = zeros(nSamples,8);
-ellipseParamData = zeros(nSamples,19);
+circleParamData = zeros(nSamples,21);
 markerData = mocapData(mocapInd,3:end);
 centeredMarkerData = zeros(nSamples,3*nMarkers);
-ellipseMarkerData = zeros(nSamples,(nCollarPoints/4+nSleevePoints/2)*3);
+circleMarkerData = zeros(nSamples,(nCollarPoints*markerDownfactor+nSleevePoints*2*markerDownfactor)*3);
 
 % parse the posture file and get body points
 [bodyData,head,body,lShoulder,rShoulder] = computePosture(sprintf('%s',postureName), nBodyPoints);
@@ -66,8 +67,6 @@ end
 collarNormal = [];
 lSleeveNormal = [];
 rSleeveNormal = [];
-collarMajAxis = [];
-collarMinAxis = [];
 
 % % plot the body posture data
 if plotFlag == 3
@@ -98,25 +97,26 @@ end
 for i = 1:nSamples
     collarDat = markerData(i,1:nCollar*3);
     collarDat = reshape(collarDat,3,nCollar)';
-    [collarEllDat, ~, collarMajAxis, collarMinAxis] = ellipseApprox(collarDat,nCollarPoints, collarMajAxis, collarMinAxis);
+    [collarCircDat, ~, collarNormal] = circleApprox(collarDat,nCollarPoints, collarNormal, 1);
 
     lSleeveDat = markerData(i,nCollar*3+1:nCollar*3+nLSleeve*3);
     lSleeveDat = reshape(lSleeveDat,3,nLSleeve)';
-    [lSleeveEllDat, ~, lSleeveNormal] = sleeveApprox(lSleeveDat(3,:),bodyData([4 6],:),nSleevePoints, lSleeveNormal);
+    [lSleeveCircDat, lSleeveParams, lSleeveNormal] = sleeveApprox(lSleeveDat,bodyData([4 6],:),nSleevePoints,lSleeveNormal);
     
     rSleeveDat = markerData(i,nCollar*3+nLSleeve*3+1:nCollar*3+nLSleeve*3+nRSleeve*3);
     rSleeveDat = reshape(rSleeveDat,3,nRSleeve)';
-    [rSleeveEllDat, ~, rSleeveNormal] = sleeveApprox(rSleeveDat(1,:),bodyData([5 7],:),nSleevePoints, rSleeveNormal);
+    [rSleeveCircDat, rSleeveParams, rSleeveNormal] = sleeveApprox(rSleeveDat,bodyData([5 7],:),nSleevePoints, rSleeveNormal);
     
-    topCoordData(i,:) = topologyCompute(head,body,lShoulder,rShoulder,collarEllDat,lSleeveEllDat,rSleeveEllDat);
+    topCoordData(i,:) = topologyCompute(head,body,lShoulder,rShoulder,collarCircDat,lSleeveCircDat,rSleeveCircDat);
 
     if plotFlag == 3
         pl1 = plot3(collarDat(:,1), collarDat(:,2), collarDat(:,3), '.-m', 'MarkerSize', markerSize, 'LineWidth', lineWidth);
         pl2 = plot3(lSleeveDat(:,1), lSleeveDat(:,2), lSleeveDat(:,3), '.-m', 'MarkerSize', markerSize, 'LineWidth', lineWidth);
         pl3 = plot3(rSleeveDat(:,1), rSleeveDat(:,2), rSleeveDat(:,3), '.-m', 'MarkerSize', markerSize, 'LineWidth', lineWidth);
-        pl4 = plot3(collarEllDat(:,1), collarEllDat(:,2), collarEllDat(:,3), '.-g', 'MarkerSize', markerSize, 'LineWidth', lineWidth);
-        pl5 = plot3(lSleeveEllDat(:,1), lSleeveEllDat(:,2), lSleeveEllDat(:,3), '.-g', 'MarkerSize', markerSize, 'LineWidth', lineWidth);
-        pl6 = plot3(rSleeveEllDat(:,1), rSleeveEllDat(:,2), rSleeveEllDat(:,3), '.-g', 'MarkerSize', markerSize, 'LineWidth', lineWidth);
+        pl4 = plot3(collarCircDat(:,1), collarCircDat(:,2), collarCircDat(:,3), '.-g', 'MarkerSize', markerSize, 'LineWidth', lineWidth);
+        pl5 = plot3(lSleeveCircDat(:,1), lSleeveCircDat(:,2), lSleeveCircDat(:,3), '.-g', 'MarkerSize', markerSize, 'LineWidth', lineWidth);
+        pl6 = plot3(rSleeveCircDat(:,1), rSleeveCircDat(:,2), rSleeveCircDat(:,3), '.-g', 'MarkerSize', markerSize, 'LineWidth', lineWidth);
+        pl7 = plot3([lSleeveParams(1); rSleeveParams(1)], [lSleeveParams(2); rSleeveParams(2)], [lSleeveParams(3); rSleeveParams(3)], '.m', 'MarkerSize', markerSize+5, 'LineWidth', lineWidth);
         drawnow; 
 
         pause(0.033);
@@ -131,14 +131,15 @@ for i = 1:nSamples
         delete(pl4);
         delete(pl5);
         delete(pl6);
+        delete(pl7);
     end
 end
 
 if plotFlag >= 2
     close all;
     fontSize = 12;
-    markerSize = 25;
     lineWidth = 3;
+    markerSize = 25;
 
     fid1 = figure; 
     hold on;
@@ -150,61 +151,42 @@ if plotFlag >= 2
     axis([-0.5 0.5 -0.5 0.5 -0.5 0.5]);
     view([90,30]);
 
-    % waitforbuttonpress;
+    waitforbuttonpress;
 end
-
-startCollarInd = [];
-startLSleeveInd = [];
-startRSleeveInd = [];
 
 for i = 1:nSamples
     collarData = centeredMarkerData(i,1:nCollar*3);
     collarData = reshape(collarData,3,nCollar)';    
-    [collarEllData, collarEllParams, collarMajAxis, collarMinAxis] = ellipseApprox(collarData, nCollarPoints/4, collarMajAxis, collarMinAxis);
-    
-    if isempty(startCollarInd)
-        [~,startCollarInd] = min(sqrt(sum((collarEllData - repmat(collarData(1,:),nCollarPoints/4,1)),2).^2));
-    end
-    collarEllData = circshift(collarEllData,-startCollarInd+1,1);
- 
+    [collarCircData, collarCircParams, collarNormal] = circleApprox(collarData, nCollarPoints*markerDownfactor, collarNormal, 1);
+     
     lSleeveData = centeredMarkerData(i,nCollar*3+1:nCollar*3+nLSleeve*3);
     lSleeveData = reshape(lSleeveData,3,nLSleeve)';
-    [lSleeveEllData, lSleeveEllParams, lSleeveNormal] = sleeveCenterApprox(lSleeveData, nSleevePoints/4, lSleeveNormal);
-    
-    if isempty(startLSleeveInd)
-        [~,startLSleeveInd] = min(sqrt(sum((lSleeveEllData - repmat(lSleeveData(1,:),nSleevePoints/4,1)),2).^2));
-    end
-    lSleeveEllData = circshift(lSleeveEllData,-startLSleeveInd+1,1);
+    [lSleeveCircData, lSleeveCircParams, lSleeveNormal] = circleApprox(lSleeveData, nSleevePoints*markerDownfactor, lSleeveNormal, 3);
     
     rSleeveData = centeredMarkerData(i,nCollar*3+nLSleeve*3+1:nCollar*3+nLSleeve*3+nRSleeve*3);
     rSleeveData = reshape(rSleeveData,3,nRSleeve)';
-    [rSleeveEllData, rSleeveEllParams, rSleeveNormal] = sleeveCenterApprox(rSleeveData, nSleevePoints/4, rSleeveNormal);
+    [rSleeveCircData, rSleeveCircParams, rSleeveNormal] = circleApprox(rSleeveData, nSleevePoints*markerDownfactor, rSleeveNormal, 1);
     
-    if isempty(startRSleeveInd)
-        [~,startRSleeveInd] = min(sqrt(sum((rSleeveEllData - repmat(rSleeveData(1,:),nSleevePoints/4,1)),2).^2));
-    end
-    rSleeveEllData = circshift(rSleeveEllData,-startRSleeveInd+1,1);
+    cED = reshape(collarCircData',1,3*nCollarPoints*markerDownfactor);
+    lSED = reshape(lSleeveCircData',1,3*nSleevePoints*markerDownfactor);
+    rSED = reshape(rSleeveCircData',1,3*nSleevePoints*markerDownfactor);
     
-    cED = reshape(collarEllData',1,3*nCollarPoints/4);
-    lSED = reshape(lSleeveEllData',1,3*nSleevePoints/4);
-    rSED = reshape(rSleeveEllData',1,3*nSleevePoints/4);
-    
-    ellipseParamData(i,:) = [collarEllParams lSleeveEllParams rSleeveEllParams];
-    ellipseMarkerData(i,:) = [cED lSED rSED];
+    circleParamData(i,:) = [collarCircParams lSleeveCircParams rSleeveCircParams];
+    circleMarkerData(i,:) = [cED lSED rSED];
     
     if plotFlag >= 2
         pl1 = plot3(collarData(:,1), collarData(:,2), collarData(:,3), '.-m', 'MarkerSize', markerSize, 'LineWidth', lineWidth);
         pl2 = plot3(lSleeveData(:,1), lSleeveData(:,2), lSleeveData(:,3), '.-m', 'MarkerSize', markerSize, 'LineWidth', lineWidth);
         pl3 = plot3(rSleeveData(:,1), rSleeveData(:,2), rSleeveData(:,3), '.-m', 'MarkerSize', markerSize, 'LineWidth', lineWidth);
-        pl4 = plot3(collarEllData(1,1), collarEllData(1,2), collarEllData(1,3), '.-g', 'MarkerSize', markerSize+10, 'LineWidth', lineWidth);
-        pl5 = plot3(lSleeveEllData(1,1), lSleeveEllData(1,2), lSleeveEllData(1,3), '.-g', 'MarkerSize', markerSize+10, 'LineWidth', lineWidth);
-        pl6 = plot3(rSleeveEllData(1,1), rSleeveEllData(1,2), rSleeveEllData(1,3), '.-g', 'MarkerSize', markerSize+10, 'LineWidth', lineWidth);
-        pl7 = plot3(collarEllData(:,1), collarEllData(:,2), collarEllData(:,3), '.-k', 'MarkerSize', markerSize-5, 'LineWidth', lineWidth);
-        pl8 = plot3(lSleeveEllData(:,1), lSleeveEllData(:,2), lSleeveEllData(:,3), '.-k', 'MarkerSize', markerSize-5, 'LineWidth', lineWidth);
-        pl9 = plot3(rSleeveEllData(:,1), rSleeveEllData(:,2), rSleeveEllData(:,3), '.-k', 'MarkerSize', markerSize-5, 'LineWidth', lineWidth);
+        pl4 = plot3(collarCircData(1,1), collarCircData(1,2), collarCircData(1,3), '.-g', 'MarkerSize', markerSize+10, 'LineWidth', lineWidth);
+        pl5 = plot3(lSleeveCircData(1,1), lSleeveCircData(1,2), lSleeveCircData(1,3), '.-g', 'MarkerSize', markerSize+10, 'LineWidth', lineWidth);
+        pl6 = plot3(rSleeveCircData(1,1), rSleeveCircData(1,2), rSleeveCircData(1,3), '.-g', 'MarkerSize', markerSize+10, 'LineWidth', lineWidth);
+        pl7 = plot3(collarCircData(:,1), collarCircData(:,2), collarCircData(:,3), '.-k', 'MarkerSize', markerSize-5, 'LineWidth', lineWidth);
+        pl8 = plot3(lSleeveCircData(:,1), lSleeveCircData(:,2), lSleeveCircData(:,3), '.-k', 'MarkerSize', markerSize-5, 'LineWidth', lineWidth);
+        pl9 = plot3(rSleeveCircData(:,1), rSleeveCircData(:,2), rSleeveCircData(:,3), '.-k', 'MarkerSize', markerSize-5, 'LineWidth', lineWidth);
         drawnow; 
 
-        pause(0.001);
+        pause(0.033);
 
         if printFlag
             print(fid1,sprintf('../Results/MocapData/Figures/%s%03d.png',mocapName,i),'-dpng');
@@ -230,15 +212,17 @@ if plotFlag == 3
         figure;
         plot(xDat,topCoordData(:,i));
     end
+    
+    waitforbuttonpress;
 end
 
 if plotFlag == 3
     close all;
     xDat = 1:nSamples;
     
-    for i = 1:size(ellipseParamData,2)
+    for i = 1:size(circleParamData,2)
         figure;
-        plot(xDat,ellipseParamData(:,i));
+        plot(xDat,circleParamData(:,i));
     end
 end
 
@@ -246,8 +230,8 @@ end
 dlmwrite(sprintf('%sRawMarker',mocapName),markerData);
 dlmwrite(sprintf('%sTopCoord',mocapName),topCoordData);
 dlmwrite(sprintf('%sMarker',mocapName),centeredMarkerData);
-dlmwrite(sprintf('%sEllipseParam',mocapName),ellipseParamData);
-dlmwrite(sprintf('%sEllipseMarker',mocapName),ellipseMarkerData);
+dlmwrite(sprintf('%sCircleParam',mocapName),circleParamData);
+dlmwrite(sprintf('%sCircleMarker',mocapName),circleMarkerData);
 
 %% Function for piecewise linear approximation
 function outputData = linearApprox(inputData, nPoints)
@@ -264,7 +248,7 @@ outputData = interp1(limits,inputData,fractions);
 return
 
 %% Function for ellipse approximation
-function [outputData, params, majAxis, minAxis] = ellipseApprox(inputData, nPoints, prevMajAxis, prevMinAxis)
+function [outputData, params, majAxis, minAxis] = collarEllipseApprox(inputData, nPoints, prevMajAxis, prevMinAxis)
 
 nMarkers = size(inputData,1);
 
@@ -336,44 +320,42 @@ function [outputData, params, normal] = sleeveApprox(inputData, bodyData, nPoint
 
 wrist = bodyData(1,:);
 shoulder = bodyData(2,:);
-sleeve = inputData;
+nMarkers = size(inputData,1);
 
-minDist = abs(cross(shoulder-wrist,sleeve-wrist))/abs(shoulder-wrist);
-nearPoint = (dot(sleeve-shoulder,wrist-shoulder)*wrist+dot(sleeve-wrist,shoulder-wrist)*shoulder)/dot(shoulder-wrist,shoulder-wrist);
+radii = zeros(nMarkers,1);
+centers = zeros(nMarkers,3);
 
-normal = (wrist-shoulder)/norm(wrist-shoulder);
-
-if prevNormal
-    if sign(dot(normal,prevNormal)) == -1
-        normal = -normal;
-    end
-else
-    if sign(sum(normal)) == -1
-        normal = -normal;
-    end
+for i = 1:nMarkers,
+    sleeve = inputData(i,:);
+    radii(i) = abs(cross(shoulder-wrist,sleeve-wrist))/abs(shoulder-wrist);
+    centers(i,:) = (dot(sleeve-shoulder,wrist-shoulder)*wrist+dot(sleeve-wrist,shoulder-wrist)*shoulder)/dot(shoulder-wrist,shoulder-wrist);
 end
 
-p1 = (sleeve-nearPoint)/norm(sleeve-nearPoint);
-p2 = cross(p1,normal);
+radius = 0.06;
+center = mean(centers,1);
+normal = (wrist-shoulder)/norm(wrist-shoulder);
+
+axis1 = (inputData(1,:)-center)/norm(inputData(1,:)-center);
+axis2 = cross(axis1,normal);
 
 theta = linspace(0,2*pi,nPoints+1);
 theta = theta(1:end-1);
-outputData = transpose(repmat(nearPoint',1,nPoints) + minDist*(p1'*sin(theta)) + minDist*(p2'*cos(theta)));
+outputData = transpose(repmat(center',1,nPoints) + radius*(axis1'*sin(theta)) + radius*(axis2'*cos(theta)));
 
-params = [nearPoint minDist];
+params = [center normal radius];
 
 return
 
 %% Function to approximate centered sleeve shape
-function [outputData, params, normal] = sleeveCenterApprox(points, nPoints, prevNormal)
+function [outputData, params, normal] = circleApprox(inputData, nPoints, prevNormal, startIndex)
 
 % centering data and computing center
-center = mean(points,1);
-nMarkers = size(points,1);
-radius = mean(sqrt(sum((points - repmat(center,nMarkers,1)).^2,2)));
+center = mean(inputData,1);
+nMarkers = size(inputData,1);
+radius = mean(sqrt(sum((inputData - repmat(center,nMarkers,1)).^2,2)));
 
 % computing normal to points
-dataN = transpose(points - repmat(center,nMarkers,1));
+dataN = transpose(inputData - repmat(center,nMarkers,1));
 [U,~,~] = svd(dataN);
 normal = U(:,3);
 
@@ -387,13 +369,13 @@ else
     end
 end
 
-p1 = (points(1,:)-center)/norm(points(1,:)-center);
-p2 = cross(p1,normal);
+axis1 = (inputData(startIndex,:)-center)/norm(inputData(startIndex,:)-center);
+axis2 = cross(axis1,normal');
 
 theta = linspace(0,2*pi,nPoints+1);
 theta = theta(1:end-1);
-outputData = transpose(repmat(center',1,nPoints) + radius*(p1'*sin(theta)) + radius*(p2'*cos(theta)));
+outputData = transpose(repmat(center',1,nPoints) + radius*(axis2'*sin(theta)) + radius*(axis1'*cos(theta)));
 
-params = [center radius];
+params = [center normal' radius];
 
 return
