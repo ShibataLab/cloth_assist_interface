@@ -76,7 +76,7 @@ int main(int argc, char **argv)
 
   // add flag for process mode
   // edit this flag to apply transform or not
-  bool processMode = false;
+  bool processMode = true;
 
   // create fileNames for different output files
   sprintf(esfName, "../%sESF", fileName.c_str());
@@ -109,7 +109,7 @@ int main(int argc, char **argv)
   // std::cin >> c;
 
   // pcl point cloud
-  // pcl::visualization::CloudViewer viewer("Feature Extraction");
+  pcl::visualization::CloudViewer viewer("Feature Extraction");
 
   // pcl feature extraction Initialization
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>());
@@ -211,12 +211,12 @@ int main(int argc, char **argv)
     for (int i = 0; i < cloudCentered->size(); i++)
       centerDat << cloudCentered->points[i].x << "," << cloudCentered->points[i].y << "," << cloudCentered->points[i].z << endl;
 
-    // viewer.showCloud(cloudCentered);
+    viewer.showCloud(cloudCentered);
     std::cout << "Frame: " << frame << ", Time: " << tPass.toSec() << std::endl;
     std::cout << "Cloud: " << cloud->size() << ", VOG: " << cloudVOG->size() << ", SOR: " << cloudSOR->size() << ", VFH: " << vfhs->points.size() << ", ESF: " << esfs->points.size() << endl;
     frame++;
 
-    // rate.sleep();
+    rate.sleep();
   }
 
   bag.close();
