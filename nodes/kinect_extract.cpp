@@ -104,6 +104,7 @@ int main(int argc, char **argv)
 
   for (int i = 0; i < 4; i++)
     calibDat >> transform(i,0) >> c >> transform(i,1) >> c >> transform(i,2) >> c >> transform(i,3);
+  std::cout << transform << std::endl;
 
   // wait for key press
   // std::cin >> c;
