@@ -34,6 +34,7 @@
 #include <pcl/features/normal_3d.h>
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/visualization/cloud_viewer.h>
+#include <pcl/segmentation/min_cut_segmentation.h>
 #include <pcl/visualization/histogram_visualizer.h>
 #include <pcl/filters/statistical_outlier_removal.h>
 
@@ -113,12 +114,15 @@ int main(int argc, char **argv)
   pcl::visualization::CloudViewer viewer("Feature Extraction");
 
   // pcl feature extraction Initialization
+  pcl::PointCloud <pcl::PointXYZRGB>::Ptr cloudColored;
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>());
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloudVOG(new pcl::PointCloud<pcl::PointXYZ>());
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloudSOR(new pcl::PointCloud<pcl::PointXYZ>());
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloudESF(new pcl::PointCloud<pcl::PointXYZ>());
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloudVFH(new pcl::PointCloud<pcl::PointXYZ>());
   pcl::PointCloud<pcl::Normal>::Ptr cloudNormals(new pcl::PointCloud<pcl::Normal>());
+  pcl::PointCloud<pcl::PointXYZ>::Ptr cloudClean(new pcl::PointCloud<pcl::PointXYZ> ());
+  pcl::PointCloud<pcl::PointXYZ>::Ptr cloudParam(new pcl::PointCloud<pcl::PointXYZ> ());
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloudCentered(new pcl::PointCloud<pcl::PointXYZ>());
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloudTransform(new pcl::PointCloud<pcl::PointXYZ>());
   pcl::search::KdTree<pcl::PointXYZ>::Ptr neTree(new pcl::search::KdTree<pcl::PointXYZ>());
@@ -127,8 +131,11 @@ int main(int argc, char **argv)
   pcl::PointCloud<pcl::ESFSignature640>::Ptr esfs(new pcl::PointCloud<pcl::ESFSignature640>());
 
   // feature instances
+  pcl::PointXYZ cloudMean;
   Eigen::Vector4f centroid;
   pcl::VoxelGrid<pcl::PointXYZ> vog;
+  std::vector <pcl::PointIndices> clusters;
+  pcl::MinCutSegmentation<pcl::PointXYZ> seg;
   pcl::StatisticalOutlierRemoval<pcl::PointXYZ> sor;
   pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> ne;
   pcl::ESFEstimation<pcl::PointXYZ, pcl::ESFSignature640> esf;
@@ -136,11 +143,15 @@ int main(int argc, char **argv)
 
   // Parameter setting for filtering
   sor.setMeanK(100);
-  ne.setRadiusSearch(0.03);
+  seg.setSigma (0.25);
+  seg.setRadius (0.3);
+  ne.setRadiusSearch(0.1);
+  seg.setSourceWeight (0.9);
   ne.setSearchMethod(neTree);
   sor.setStddevMulThresh(0.7);
   vfh.setSearchMethod(vfhTree);
-  vog.setLeafSize(0.015f, 0.015f, 0.015f);
+  seg.setNumberOfNeighbours (10);
+  vog.setLeafSize(0.01f, 0.01f, 0.01f);
 
   // ros time init
   ros::Time::init();
@@ -170,51 +181,63 @@ int main(int argc, char **argv)
     sor.setInputCloud(cloudVOG);
     sor.filter(*cloudSOR);
 
-    if (processMode)
-    {
-      pcl::transformPointCloud(*cloudSOR, *cloudTransform, transform);
+    pcl::compute3DCentroid(*cloudSOR, centroid);
+    cloudMean.x = centroid[0]; cloudMean.y = centroid[1]; cloudMean.z = centroid[2];
+    cloudParam->points.push_back(cloudMean);
 
-      // Center point cloud
-      pcl::compute3DCentroid(*cloudTransform, centroid);
-      pcl::demeanPointCloud(*cloudTransform, centroid, *cloudCentered);
-    }
-    else
-    {
-      // Center point cloud
-      pcl::compute3DCentroid(*cloudSOR, centroid);
-      pcl::demeanPointCloud(*cloudSOR, centroid, *cloudCentered);
-    }
+    seg.setInputCloud(cloudSOR);
+    seg.setForegroundPoints(cloudParam);
 
-    // Normal Estimation
-    ne.setInputCloud(cloudCentered);
-    ne.compute(*cloudNormals);
+    seg.extract(clusters);
+    cloudColored = seg.getColoredCloud();
+    std::cout << "Maximum flow is " << seg.getMaxFlow() << std::endl;
 
-    // Viewpoint Feature Histogram
-    vfh.setInputCloud(cloudCentered);
-    vfh.setInputNormals(cloudNormals);
-    vfh.compute(*vfhs);
+    //
+    // if (processMode)
+    // {
+    //   pcl::transformPointCloud(*cloudSOR, *cloudTransform, transform);
+    //
+    //   // Center point cloud
+    //   pcl::compute3DCentroid(*cloudTransform, centroid);
+    //   pcl::demeanPointCloud(*cloudTransform, centroid, *cloudCentered);
+    // }
+    // else
+    // {
+    //   // Center point cloud
+    //   pcl::compute3DCentroid(*cloudSOR, centroid);
+    //   pcl::demeanPointCloud(*cloudSOR, centroid, *cloudCentered);
+    // }
+    //
+    // // Normal Estimation
+    // ne.setInputCloud(cloudCentered);
+    // ne.compute(*cloudNormals);
+    //
+    // // Viewpoint Feature Histogram
+    // vfh.setInputCloud(cloudCentered);
+    // vfh.setInputNormals(cloudNormals);
+    // vfh.compute(*vfhs);
+    //
+    // // Ensemble of Shape Functions
+    // esf.setInputCloud(cloudCentered);
+    // esf.compute(*esfs);
+    //
+    // vfhDat << tPass.toSec() << ",";
+    // for (int i = 0; i < VFHSIZE; i++)
+    //   vfhDat << vfhs->points[0].histogram[i] << ",";
+    // vfhDat << endl;
+    //
+    // esfDat << tPass.toSec() << ",";
+    // for (int i = 0; i < ESFSIZE; i++)
+    //   esfDat << esfs->points[0].histogram[i] << ",";
+    // esfDat << endl;
+    //
+    // centerDat << tPass.toSec() << "," << cloudCentered->size() << endl;
+    // for (int i = 0; i < cloudCentered->size(); i++)
+    //   centerDat << cloudCentered->points[i].x << "," << cloudCentered->points[i].y << "," << cloudCentered->points[i].z << endl;
 
-    // Ensemble of Shape Functions
-    esf.setInputCloud(cloudCentered);
-    esf.compute(*esfs);
-
-    vfhDat << tPass.toSec() << ",";
-    for (int i = 0; i < VFHSIZE; i++)
-      vfhDat << vfhs->points[0].histogram[i] << ",";
-    vfhDat << endl;
-
-    esfDat << tPass.toSec() << ",";
-    for (int i = 0; i < ESFSIZE; i++)
-      esfDat << esfs->points[0].histogram[i] << ",";
-    esfDat << endl;
-
-    centerDat << tPass.toSec() << "," << cloudCentered->size() << endl;
-    for (int i = 0; i < cloudCentered->size(); i++)
-      centerDat << cloudCentered->points[i].x << "," << cloudCentered->points[i].y << "," << cloudCentered->points[i].z << endl;
-
-    viewer.showCloud(cloudCentered);
+    viewer.showCloud(cloudColored);
     std::cout << "Frame: " << frame << ", Time: " << tPass.toSec() << std::endl;
-    std::cout << "Cloud: " << cloud->size() << ", VOG: " << cloudVOG->size() << ", SOR: " << cloudSOR->size() << ", VFH: " << vfhs->points.size() << ", ESF: " << esfs->points.size() << endl;
+    // std::cout << "Cloud: " << cloud->size() << ", VOG: " << cloudVOG->size() << ", SOR: " << cloudSOR->size() << ", VFH: " << vfhs->points.size() << ", ESF: " << esfs->points.size() << endl;
     frame++;
 
     rate.sleep();
