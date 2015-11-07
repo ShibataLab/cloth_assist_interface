@@ -61,6 +61,7 @@ class Processor
 
   private:
     // flags to save data
+    int m_frame;
     bool m_videoMode, m_cloudMode, m_trackMode;
 
     // write descriptor
@@ -73,11 +74,13 @@ class Processor
     sensor_msgs::CameraInfo::ConstPtr m_cameraInfo;
 
     // opencv parameters
+    int m_filterLength;
     cv::Point m_origin;
     bool m_selectObject;
     int m_width, m_height;
     cv::VideoWriter m_writer;
-    cv::Rect m_selection, m_window;
+    std::vector<cv::Rect> m_windows;
+    cv::Rect m_selection, m_window, m_rawWindow;
     cv::Mat m_lookupY, m_lookupX, m_cameraMatrix;
     cv::Mat m_color, m_depth, m_hist, m_output, m_backproj;
 

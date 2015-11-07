@@ -13,8 +13,8 @@ Processor::Processor(std::string fileName, std::string topicColor, std::string t
   : m_videoMode(videoMode), m_cloudMode(cloudMode)
 {
   // initialize select object flag
-  m_selectObject = false;
   m_trackMode = true;
+  m_selectObject = false;
 
   // create matrices for intrinsic parameters
   m_cameraMatrix = cv::Mat::zeros(3, 3, CV_64F);
@@ -31,6 +31,9 @@ Processor::Processor(std::string fileName, std::string topicColor, std::string t
   topics.push_back(topicColor);
   topics.push_back(topicDepth);
   topics.push_back(topicCameraInfo);
+
+  // set the filter length
+  m_filterLength = 4;
 
   // create view instance for rosbag parsing
   m_view = new rosbag::View(m_bag, rosbag::TopicQuery(topics));
@@ -125,9 +128,8 @@ void Processor::run()
   // peform cloth calibration
   clothCalibrate();
 
-
   // main loop
-  int frame = 1;
+  m_frame = 1;
   while(iter != m_view->end())
   {
     m_time = (*iter).getTime();
@@ -156,7 +158,7 @@ void Processor::run()
     cloudExtract();
 
     if (m_trackMode)
-      m_tracks << frame << "," << timeTrack << std::endl;
+      m_tracks << m_frame << "," << timeTrack << std::endl;
 
     if (m_videoMode)
       m_writer.write(m_output);
@@ -169,7 +171,7 @@ void Processor::run()
     cv::imshow("Backproj", m_backproj);
     cv::waitKey(20);
 
-    frame++;
+    m_frame++;
   }
 
   // clean exit
@@ -245,7 +247,8 @@ void Processor::clothCalibrate()
 	cv::normalize(m_hist, m_hist, 0, 255, cv::NORM_MINMAX);
 
 	// track window initialization
-	m_window = m_selection;
+	m_rawWindow = m_selection;
+  m_windows.push_back(m_rawWindow);
 }
 
 // function to display images
@@ -281,7 +284,7 @@ void Processor::createROI(cv::Mat &roi)
 
   // initialize the calibration values
   hist = m_hist;
-  window = m_window;
+  window = m_rawWindow;
 
   // perform color extraction
   cv::cvtColor(color, hsv, CV_BGR2HSV);
@@ -305,12 +308,35 @@ void Processor::createROI(cv::Mat &roi)
   // reinitialize track window
   if (window.area() <= 1)
     window = cv::Rect(0, 0, m_width, m_height);
-  m_window = window;
+  m_rawWindow = window;
 
-  window = cv::Rect(window.x - 15, window.y - 15, window.width + 15, window.height + 15);
+  int rectX = 0, rectY = 0, rectW = 0, rectH = 0;
+  if (m_frame > m_filterLength-1)
+  {
+    for (int i = 0; i < m_filterLength; i++)
+    {
+      rectX += m_windows[i].x/(m_filterLength+1);
+      rectY += m_windows[i].y/(m_filterLength+1);
+      rectW += m_windows[i].width/(m_filterLength+1);
+      rectH += m_windows[i].height/(m_filterLength+1);
+    }
+
+    rectX += window.x/(m_filterLength+1);
+    rectY += window.y/(m_filterLength+1);
+    rectW += window.width/(m_filterLength+1);
+    rectH += window.height/(m_filterLength+1);
+
+    m_window = cv::Rect(rectX, rectY, rectW+10, rectH+10);
+    m_windows.erase(m_windows.begin(), m_windows.begin()+1);
+  }
+  else
+    m_window = window;
+
+  m_windows.push_back(m_window);
 
   // draw rectangles around highlighted areas
-  cv::rectangle(color, window.tl(), window.br(), cv::Scalar(255, 255, 255), 2, CV_AA);
+  cv::rectangle(color, window.tl(), window.br(), cv::Scalar(0, 0, 255), 2, CV_AA);
+  cv::rectangle(color, m_window.tl(), m_window.br(), cv::Scalar(0, 255, 0), 2, CV_AA);
 
   roi.release();
 
