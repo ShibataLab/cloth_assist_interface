@@ -269,6 +269,7 @@ void Processor::createROI(cv::Mat &roi)
 {
   // opencv initialization
   cv::Mat color, depth, backproj;
+  cv::Rect boundRect = cv::Rect(0, 0, m_width, m_height);
 
   // copy images to function images
   m_color.copyTo(color);
@@ -307,7 +308,7 @@ void Processor::createROI(cv::Mat &roi)
 
   // reinitialize track window
   if (window.area() <= 1)
-    window = cv::Rect(0, 0, m_width, m_height);
+    window = boundRect;
   m_rawWindow = window;
 
   int rectX = 0, rectY = 0, rectW = 0, rectH = 0;
@@ -331,6 +332,9 @@ void Processor::createROI(cv::Mat &roi)
   }
   else
     m_window = window;
+
+  window = window & boundRect;
+  m_window = m_window & boundRect;
 
   m_windows.push_back(m_window);
 
