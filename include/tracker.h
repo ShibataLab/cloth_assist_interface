@@ -64,7 +64,7 @@ class Tracker
     std::mutex _lock;
 
     // important variables to decide functionality
-    const std::string _topicColor, _topicDepth, _topicType;
+    const std::string _topicColor, _topicDepth, _topicType, _calibFile;
     std::string _topicCameraInfoColor, _topicCameraInfoDepth;
 
     // flags for logic
@@ -117,8 +117,9 @@ class Tracker
     image_transport::Publisher _pubTrackImage;
 
     // pcl feature extraction Initialization
-    pcl::PointCloud<pcl::PointXYZ>::Ptr _cloud, _cloudVOG, _cloudSOR, _cloudCentered;
+    Eigen::Matrix4f _transform;
     pcl::PointCloud<pcl::ESFSignature640>::Ptr _cloudESF;
+    pcl::PointCloud<pcl::PointXYZ>::Ptr _cloud, _cloudVOG, _cloudSOR, _cloudTransform, _cloudCentered;
 
     // feature instances
     Eigen::Vector4f _centroid;
@@ -129,7 +130,7 @@ class Tracker
   public:
     // class constructor
     // takes 3 input arguments topic color, topic depth and topic type
-    Tracker(const std::string &topicColor, const std::string &topicDepth, const std::string &topicType);
+    Tracker(const std::string &topicColor, const std::string &topicDepth, const std::string &topicType, const std::string &calibFile);
 
     // class destructor
     ~Tracker();

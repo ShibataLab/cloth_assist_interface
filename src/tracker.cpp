@@ -10,8 +10,8 @@
 #include <tracker.h>
 
 // class constructor
-Tracker::Tracker(const std::string &topicColor, const std::string &topicDepth, const std::string &topicType)
-    : _topicColor(topicColor), _topicDepth(topicDepth), _topicType(topicType), _updateImage(false), _running(false), _queueSize(5), _nh("~"), _spinner(0), _it(_nh)
+Tracker::Tracker(const std::string &topicColor, const std::string &topicDepth, const std::string &topicType, const std::string &calibFile)
+    : _topicColor(topicColor), _topicDepth(topicDepth), _topicType(topicType), _calibFile(calibFile), _updateImage(false), _running(false), _queueSize(5), _nh("~"), _spinner(0), _it(_nh)
 {
   // create matrices for intrinsic parameters
   _cameraMatrixColor = cv::Mat::zeros(3, 3, CV_64F);
@@ -25,6 +25,10 @@ Tracker::Tracker(const std::string &topicColor, const std::string &topicDepth, c
   // get the camera info ros topics for color and depth
   _topicCameraInfoColor = _topicColor.substr(0, _topicColor.rfind('/')) + "/camera_info";
   _topicCameraInfoDepth = _topicDepth.substr(0, _topicDepth.rfind('/')) + "/camera_info";
+
+  // setting the transform parameter
+  _transform = Eigen::Matrix4f::Identity();
+
 }
 
 // class destructor
@@ -245,6 +249,16 @@ void Tracker::clothTracker()
   // create chrono instances to measure performance of the program
   std::chrono::time_point<std::chrono::high_resolution_clock> start, now;
 
+  // load the calibration parameters
+  if (_calibFile != "default")
+  {
+    char c;
+    ifstream calibDat(_calibFile, ifstream::in);
+    for (int i = 0; i < 4; i++)
+      calibDat >> _transform(i,0) >> c >> _transform(i,1) >> c >> _transform(i,2) >> c >> _transform(i,3);
+    std::cout << _transform << std::endl;
+  }
+
   // more variables for printing text and other functions
   double fps = 0;
   size_t frameCount = 0;
@@ -346,6 +360,7 @@ void Tracker::createROI(cv::Mat &color, cv::Mat &depth, cv::Mat &backproj, cv::M
   float hranges[] = { 0, 180 };
   const float* phranges = hranges;
   cv::Mat hsv, hue, mask, hist, pcImg, pcMask;
+  cv::Rect boundRect = cv::Rect(0, 0, _width, _height);
 
   // initialize the calibration values
   hist = _hist;
@@ -373,10 +388,10 @@ void Tracker::createROI(cv::Mat &color, cv::Mat &depth, cv::Mat &backproj, cv::M
 
   // reinitialize track window
   if (window.area() <= 1)
-    window = cv::Rect(0, 0, _width, _height);
+    window = boundRect;
   _window = window;
 
-  window = cv::Rect(window.x - 15, window.y - 15, window.width + 15, window.height + 15);
+  window = cv::Rect(window.x - 15, window.y - 15, window.width + 15, window.height + 15) & boundRect;
 
   // draw rectangles around highlighted areas
   cv::rectangle(color, window.tl(), window.br(), cv::Scalar(255, 255, 255), 2, CV_AA);
@@ -393,7 +408,7 @@ void Tracker::createCloud(cv::Mat &roi)
 {
   // initialize cloud
   _cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
-  
+
   // set cloud parameters
   _cloud->header.frame_id = "kinect2_link";
   _cloud->width = roi.cols;
@@ -449,6 +464,7 @@ void Tracker::processCloud()
   _cloudVOG = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
   _cloudSOR = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
   _cloudCentered = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
+  _cloudTransform = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
   _cloudESF = pcl::PointCloud<pcl::ESFSignature640>::Ptr(new pcl::PointCloud<pcl::ESFSignature640>());
 
   // process the point cloud
@@ -459,12 +475,17 @@ void Tracker::processCloud()
   _sor.filter(*_cloudSOR);
 
   // Center point cloud
-  pcl::compute3DCentroid(*_cloudSOR, _centroid);
-  pcl::demeanPointCloud(*_cloudSOR, _centroid, *_cloudCentered);
+  pcl::transformPointCloud(*_cloudSOR, *_cloudTransform, _transform);
+  pcl::compute3DCentroid(*_cloudTransform, _centroid);
+  pcl::demeanPointCloud(*_cloudTransform, _centroid, *_cloudCentered);
 
   // Compute ESF descriptor
   _esf.setInputCloud(_cloudCentered);
   _esf.compute(*_cloudESF);
+
+  // recompute centered without transformation
+  pcl::compute3DCentroid(*_cloudSOR, _centroid);
+  pcl::demeanPointCloud(*_cloudSOR, _centroid, *_cloudCentered);
 }
 
 // mouse click callback function for T-shirt color calibration
