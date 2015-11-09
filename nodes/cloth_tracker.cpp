@@ -27,6 +27,9 @@ int main(int argc, char **argv)
     return 0;
   }
 
+  // argument for calibration file
+  std::string calibFile = "default";
+
   // create default strings for different kinect2 ros topics
   std::string topicType = "sd";
   std::string ns = K2_DEFAULT_NS;
@@ -69,6 +72,12 @@ int main(int argc, char **argv)
       topicColor = K2_TOPIC_SD K2_TOPIC_IMAGE_COLOR K2_TOPIC_IMAGE_RECT;
       topicDepth = K2_TOPIC_SD K2_TOPIC_IMAGE_DEPTH K2_TOPIC_IMAGE_RECT;
     }
+
+    // setting the calib file parameter
+    else
+    {
+      calibFile = param;
+    }
   }
 
 
@@ -79,7 +88,7 @@ int main(int argc, char **argv)
   std::cout << "topic depth: " << topicDepth << std::endl;
 
   // create tracker with parsed command line parameters
-  Tracker tracker(topicColor, topicDepth, topicType);
+  Tracker tracker(topicColor, topicDepth, topicType, calibFile);
 
   // start running tracker instance
   std::cout << "starting tracker..." << std::endl;
