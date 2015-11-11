@@ -5,7 +5,7 @@
 % TODO:
 % 1) Implement in python
 
-function computeMocap(trackName, mocapName, postureName)
+function computeMocap(trackName, mocapName, postureName, startTime)
 
 % set the flag names
 plotFlag = 1;
@@ -28,7 +28,7 @@ nSamples = size(kinectData,1);
 
 % compute mocap data corresponding to kinect tracks
 offset = 15;
-mocapT = mocapData(:,2);
+mocapT = mocapData(:,2) + startTime;
 kinectT = kinectData(:,2);
 mocapInd = zeros(nSamples,1);
 
