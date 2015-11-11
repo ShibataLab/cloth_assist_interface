@@ -9,7 +9,7 @@
 // help function
 void help(const std::string &path)
 {
-  std::cout << path << " [options]" << std::endl
+  std::cout << path << "  [options]" << std::endl
             << "  recordMode: 'qhd', 'hd', 'sd'" << std::endl
             << "  writeVideo: write color tracking video to file" << std::endl
             << "  writeCloud: write extracted point cloud to ros bag file" << std::endl;
