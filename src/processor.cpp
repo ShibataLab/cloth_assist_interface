@@ -14,6 +14,7 @@ Processor::Processor(std::string fileName, std::string topicColor, std::string t
 {
   // initialize select object flag
   m_trackMode = true;
+  m_featureMode = true;
   m_selectObject = false;
 
   // create matrices for intrinsic parameters
@@ -88,12 +89,19 @@ void Processor::run()
 {
   // opencv variables
   cv::Mat roi;
+  cv::namedWindow("Depth",1);
   cv::namedWindow("Output", 1);
   cv::namedWindow("Backproj", 1);
 
   // start parsing rosbag
   std::string type;
   std::string topicCloud = "/cloth/cloud";
+  std::string topicColor = "/cloth/color";
+  std::string topicDepth = "/cloth/depth";
+  std::string topicBackproj = "/cloth/backproj";
+
+  cv_bridge::CvImage sColor,sDepth,sBackproj;
+
   rosbag::View::iterator iter = m_view->begin();
 
   double currentTime, timeTrack, startTime;
@@ -160,11 +168,42 @@ void Processor::run()
     if (m_trackMode)
       m_tracks << m_frame << "," << timeTrack << std::endl;
 
-    if (m_videoMode)
-      m_writer.write(m_output);
+    if (!m_featureMode)
+    {
+      if (m_videoMode)
+        m_writer.write(m_output);
 
-    if (m_cloudMode)
-      m_cloudBag.write(topicCloud, m_time, *m_cloud);
+      if (m_cloudMode)
+        m_cloudBag.write(topicCloud, m_time, *m_cloud);
+    }
+    else
+    {
+      if (m_cloudMode)
+      {
+        m_cloudBag.write(topicCloud, m_time, *m_cloud);
+
+        sColor.header.stamp = m_time;
+        sColor.header.frame_id = "color";
+        sColor.encoding = "bgr8"; sColor.image = m_color;
+
+        sDepth.header.stamp = m_time;
+        sDepth.header.frame_id = "depth";
+        sDepth.encoding = "16UC1"; sDepth.image = m_points;
+
+        sBackproj.header.stamp = m_time;
+        sBackproj.header.frame_id = "backproj";
+        sBackproj.encoding = "8UC1"; sBackproj.image = m_backproj;
+
+        m_cloudBag.write(topicColor, m_time, sColor);
+        m_cloudBag.write(topicDepth, m_time, sDepth);
+        m_cloudBag.write(topicBackproj, m_time, sBackproj);
+      }
+    }
+
+    if (m_featureMode)
+      cv::imshow("Depth", m_points);
+    else
+      cv::imshow("Depth", m_depth);
 
     viewer.showCloud(m_cloud);
     cv::imshow("Output", m_output);
@@ -311,6 +350,7 @@ void Processor::createROI(cv::Mat &roi)
     window = boundRect;
   m_rawWindow = window;
 
+  int centerX = 0, centerY = 0;
   int rectX = 0, rectY = 0, rectW = 0, rectH = 0;
   if (m_frame > m_filterLength-1)
   {
@@ -320,6 +360,9 @@ void Processor::createROI(cv::Mat &roi)
       rectY += m_windows[i].y/(m_filterLength+1);
       rectW += m_windows[i].width/(m_filterLength+1);
       rectH += m_windows[i].height/(m_filterLength+1);
+
+      centerX += (m_windows[i].x+m_windows[i].width/2)/(m_filterLength+1);
+      centerY += (m_windows[i].y+m_windows[i].height/2)/(m_filterLength+1);
     }
 
     rectX += window.x/(m_filterLength+1);
@@ -327,30 +370,63 @@ void Processor::createROI(cv::Mat &roi)
     rectW += window.width/(m_filterLength+1);
     rectH += window.height/(m_filterLength+1);
 
+    centerX += (window.x+window.width/2)/(m_filterLength+1);
+    centerY += (window.y+window.height/2)/(m_filterLength+1);
+
     m_window = cv::Rect(rectX, rectY, rectW+10, rectH+10);
     m_windows.erase(m_windows.begin(), m_windows.begin()+1);
+    m_featWindow = cv::Rect(centerX-WINDOWSIZE/2-10,centerY-WINDOWSIZE/2-10,WINDOWSIZE,WINDOWSIZE);
   }
   else
+  {
     m_window = window;
+
+    centerX = (window.x+window.width/2);
+    centerY = (window.y+window.height/2);
+    m_featWindow = cv::Rect(centerX-WINDOWSIZE/2-10,centerY-WINDOWSIZE/2-10,WINDOWSIZE,WINDOWSIZE);
+  }
 
   window = window & boundRect;
   m_window = m_window & boundRect;
+  m_featWindow = m_featWindow & boundRect;
 
   m_windows.push_back(m_window);
 
-  // draw rectangles around highlighted areas
-  cv::rectangle(color, window.tl(), window.br(), cv::Scalar(0, 0, 255), 2, CV_AA);
-  cv::rectangle(color, m_window.tl(), m_window.br(), cv::Scalar(0, 255, 0), 2, CV_AA);
-
   roi.release();
+  m_points.release();
 
-  pcMask = backproj(m_window);
-  pcImg = depth(m_window);
+  if (m_featureMode)
+  {
+    pcMask = backproj(m_featWindow);
+    pcImg = depth(m_featWindow);
+  }
+  else
+  {
+    pcMask = backproj(m_window);
+    pcImg = depth(m_window);
+  }
+
   pcImg.copyTo(roi, pcMask);
+  pcImg.copyTo(m_points, pcMask);
 
   // copy color to output
-  color.copyTo(m_output);
-  backproj.copyTo(m_backproj);
+  if (m_featureMode)
+  {
+    m_output = color(m_featWindow);
+    m_backproj = backproj(m_featWindow);
+  }
+  else
+  {
+    // draw rectangles around highlighted areas
+    cv::rectangle(color, window.tl(), window.br(), cv::Scalar(0, 0, 255), 2, CV_AA);
+    cv::rectangle(color, m_window.tl(), m_window.br(), cv::Scalar(0, 255, 0), 2, CV_AA);
+    cv::rectangle(color, m_featWindow.tl(), m_featWindow.br(), cv::Scalar(255, 255, 255), 2, CV_AA);
+    cv::rectangle(depth, m_featWindow.tl(), m_featWindow.br(), cv::Scalar(65000, 65000, 65000), 2, CV_AA);
+
+    depth.copyTo(m_depth);
+    color.copyTo(m_output);
+    backproj.copyTo(m_backproj);
+  }
 }
 
 // function to create point cloud from extracted ROI
@@ -364,9 +440,9 @@ void Processor::createCloud(cv::Mat &roi)
   m_cloud->width = roi.cols;
   m_cloud->height = roi.rows;
 
-  m_cloud->is_dense = false;
+  m_cloud->is_dense = true;
   m_cloud->points.resize(m_cloud->height * m_cloud->width);
-
+  std::cout << m_cloud->size() << std::endl;
   // create lookup tables
   readCameraInfo();
 
@@ -399,7 +475,7 @@ void Processor::createCloud(cv::Mat &roi)
       if(isnan(depthValue) || depthValue <= 0.001)
       {
         // set values to NaN for later processing
-        itP->x = itP->y = itP->z = badPoint;
+        itP->x = itP->y = itP->z = 0.0;
         continue;
       }
 
