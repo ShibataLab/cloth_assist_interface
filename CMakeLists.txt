@@ -89,6 +89,9 @@ target_link_libraries(kinect_processor ${PCL_LIBRARIES} ${catkin_LIBRARIES} ${Op
 add_executable(kinect_extract nodes/kinect_extract.cpp)
 target_link_libraries(kinect_extract ${PCL_LIBRARIES} ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
+add_executable(feature_extract nodes/feature_extract.cpp)
+target_link_libraries(feature_extract ${PCL_LIBRARIES} ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+
 add_executable(marker_recorder nodes/marker_recorder.cpp)
 target_link_libraries(marker_recorder ${catkin_LIBRARIES} -lzmq)
 
