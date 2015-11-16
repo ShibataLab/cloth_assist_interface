@@ -4,6 +4,7 @@
 // Date: 2015/9/7
 
 // TODO:
+// 0) Implementation really crude. Improve implementation
 // 1) Improve point cloud processing using different filters
 
 #include <processor.h>
@@ -184,11 +185,11 @@ void Processor::run()
 
         sColor.header.stamp = m_time;
         sColor.header.frame_id = "color";
-        sColor.encoding = "bgr8"; sColor.image = m_color;
+        sColor.encoding = "8UC1"; sColor.image = m_output;
 
         sDepth.header.stamp = m_time;
         sDepth.header.frame_id = "depth";
-        sDepth.encoding = "16UC1"; sDepth.image = m_points;
+        sDepth.encoding = "8UC1"; sDepth.image = m_points;
 
         sBackproj.header.stamp = m_time;
         sBackproj.header.frame_id = "backproj";
@@ -307,8 +308,8 @@ void Processor::cloudExtract()
 void Processor::createROI(cv::Mat &roi)
 {
   // opencv initialization
-  cv::Mat color, depth, backproj;
   cv::Rect boundRect = cv::Rect(0, 0, m_width, m_height);
+  cv::Mat color, depth, backproj, tempDepth, tempColor1, tempColor2;
 
   // copy images to function images
   m_color.copyTo(color);
@@ -351,6 +352,7 @@ void Processor::createROI(cv::Mat &roi)
   m_rawWindow = window;
 
   int centerX = 0, centerY = 0;
+  int winOffsetX = 0, winOffsetY = 0;
   int rectX = 0, rectY = 0, rectW = 0, rectH = 0;
   if (m_frame > m_filterLength-1)
   {
@@ -375,7 +377,10 @@ void Processor::createROI(cv::Mat &roi)
 
     m_window = cv::Rect(rectX, rectY, rectW+10, rectH+10);
     m_windows.erase(m_windows.begin(), m_windows.begin()+1);
-    m_featWindow = cv::Rect(centerX-WINDOWSIZE/2-10,centerY-WINDOWSIZE/2-10,WINDOWSIZE,WINDOWSIZE);
+
+    winOffsetX = std::min(centerX-WINDOWSIZE/2-10,m_width-WINDOWSIZE-1);
+    winOffsetY = std::min(centerY-WINDOWSIZE/2-10,m_height-WINDOWSIZE-1);
+    m_featWindow = cv::Rect(winOffsetX,winOffsetY,WINDOWSIZE,WINDOWSIZE);
   }
   else
   {
@@ -383,7 +388,10 @@ void Processor::createROI(cv::Mat &roi)
 
     centerX = (window.x+window.width/2);
     centerY = (window.y+window.height/2);
-    m_featWindow = cv::Rect(centerX-WINDOWSIZE/2-10,centerY-WINDOWSIZE/2-10,WINDOWSIZE,WINDOWSIZE);
+
+    winOffsetX = std::min(centerX-WINDOWSIZE/2-10,m_width-WINDOWSIZE-1);
+    winOffsetY = std::min(centerY-WINDOWSIZE/2-10,m_height-WINDOWSIZE-1);
+    m_featWindow = cv::Rect(winOffsetX,winOffsetY,WINDOWSIZE,WINDOWSIZE);
   }
 
   window = window & boundRect;
@@ -407,12 +415,15 @@ void Processor::createROI(cv::Mat &roi)
   }
 
   pcImg.copyTo(roi, pcMask);
-  pcImg.copyTo(m_points, pcMask);
+  pcImg.copyTo(tempDepth, pcMask);
+  dispDepth(tempDepth, m_points, 4096.0f);
 
   // copy color to output
   if (m_featureMode)
   {
-    m_output = color(m_featWindow);
+    tempColor1 = color(m_featWindow);
+    tempColor1.copyTo(tempColor2,pcMask);
+    cv::cvtColor(tempColor2, m_output, CV_BGR2GRAY);
     m_backproj = backproj(m_featWindow);
   }
   else
@@ -472,10 +483,10 @@ void Processor::createCloud(cv::Mat &roi)
       register const float depthValue = *itD / 1000.0f;
 
       // Check for invalid measurements
-      if(isnan(depthValue) || depthValue <= 0.001)
+      if(isnan(depthValue) || depthValue <= 0.1)
       {
         // set values to NaN for later processing
-        itP->x = itP->y = itP->z = 0.0;
+        itP->x = itP->y = itP->z = badPoint;
         continue;
       }
 
@@ -515,6 +526,24 @@ void Processor::onMouse(int event, int x, int y, int flags, void* param)
 		ptr->m_selectObject = false;
 		break;
 	}
+}
+
+void Processor::dispDepth(const cv::Mat &in, cv::Mat &out, const float maxValue)
+{
+  out = cv::Mat(in.rows, in.cols, CV_8U);
+  const uint32_t maxInt = 255;
+
+  #pragma omp parallel for
+  for(int r = 0; r < in.rows; ++r)
+  {
+    const uint16_t *itI = in.ptr<uint16_t>(r);
+    uint8_t *itO = out.ptr<uint8_t>(r);
+
+    for(int c = 0; c < in.cols; ++c, ++itI, ++itO)
+    {
+      *itO = (uint8_t)std::min((*itI * maxInt / maxValue), 255.0f);
+    }
+  }
 }
 
 void Processor::readImage(sensor_msgs::Image::ConstPtr msgImage, cv::Mat &image)

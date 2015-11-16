@@ -6,8 +6,8 @@
 // TODO:
 
 #pragma once
-#ifndef __TRACKER_H__
-#define __TRACKER_H__
+#ifndef __PROCESSOR_H__
+#define __PROCESSOR_H__
 
 // CPP headers
 #include <cmath>
@@ -109,6 +109,9 @@ class Processor
 
     // function to obtain cv::Mat from sensor_msgs
     void readImage(sensor_msgs::Image::ConstPtr msgImage, cv::Mat &image);
+
+    // function to downscale image
+    void dispDepth(const cv::Mat &in, cv::Mat &out, const float maxValue);
 
     // mouse click callback function for T-shirt color calibration
     static void onMouse(int event, int x, int y, int flags, void* param);
