@@ -31,6 +31,8 @@ void Recorder::run()
 
   // initialize zmq variables
   zmq::context_t context(1);
+  
+  // initialize socket with the pair option
   zmq::socket_t kinectSocket(context, ZMQ_PAIR);
 
   // create kinect server to synchronize with
