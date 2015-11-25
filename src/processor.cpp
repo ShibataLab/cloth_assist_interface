@@ -462,6 +462,16 @@ void Processor::createCloud(cv::Mat &roi)
   // variables
   const float badPoint = std::numeric_limits<float>::quiet_NaN();
 
+  int xOffset, yOffset;
+  if (m_featureMode)
+  {
+    xOffset = m_featWindow.x; yOffset = m_featWindow.y;
+  }
+  else
+  {
+    xOffset = m_window.x; yOffset = m_window.y;    
+  }
+
   // parallel processing of pixel values
   #pragma omp parallel for
   for(int r = 0; r < roi.rows; ++r)
@@ -473,9 +483,9 @@ void Processor::createCloud(cv::Mat &roi)
     const uint16_t *itD = roi.ptr<uint16_t>(r);
 
     // get the x and y values
-    const float y = m_lookupY.at<float>(0, m_window.y+r);
+    const float y = m_lookupY.at<float>(0, yOffset+r);
     const float *itX = m_lookupX.ptr<float>();
-    itX = itX + m_window.x;
+    itX = itX + xOffset;
 
     // convert all the depth values in the depth image to Points in point cloud
     for(size_t c = 0; c < (size_t)roi.cols; ++c, ++itP, ++itD, ++itX)
