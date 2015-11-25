@@ -24,17 +24,14 @@
 #include <cv_bridge/cv_bridge.h>
 
 // PCL headers
+#include <pcl/pcl_macros.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
-#include <pcl/features/vfh.h>
-#include <pcl/features/esf.h>
+#include <pcl/filters/filter.h>
 #include <pcl_ros/point_cloud.h>
 #include <pcl/common/transforms.h>
-#include <pcl/features/normal_3d.h>
-#include <pcl/filters/voxel_grid.h>
 #include <pcl/visualization/cloud_viewer.h>
 #include <pcl/segmentation/min_cut_segmentation.h>
-#include <pcl/visualization/histogram_visualizer.h>
 #include <pcl/filters/statistical_outlier_removal.h>
 
 // help function
@@ -68,11 +65,11 @@ int main(int argc, char **argv)
 
   // filename default
   char c;
-  std::string fileName;
+  std::string fileName, calibName;
   char bagName[200], cloudName[200], colorName[200], depthName[200], maskName[200];
 
   // printing help information
-  if(argc != 2)
+  if(argc != 3)
   {
     help(argv[0]);
     ros::shutdown();
@@ -81,6 +78,7 @@ int main(int argc, char **argv)
   else
   {
     fileName = argv[1];
+    calibName = argv[2];
   }
 
   // create fileNames for different output files
@@ -109,14 +107,40 @@ int main(int argc, char **argv)
   bag.open(bagName, rosbag::bagmode::Read);
   rosbag::View view(bag, rosbag::TopicQuery(topics));
 
+  ifstream calibDat(calibName, ifstream::in);
+  Eigen::Matrix4f transform = Eigen::Matrix4f::Identity();
+
+  for (int i = 0; i < 4; i++)
+    calibDat >> transform(i,0) >> c >> transform(i,1) >> c >> transform(i,2) >> c >> transform(i,3);
+  std::cout << transform << std::endl;
+
   // variables for parsing ros bag file
   std::string topic, type;
-  cv::namedWindow("Color",1);
   cv::Mat color, depth, mask;
+
+  // pcl feature extraction Initialization
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>());
+  pcl::PointCloud<pcl::PointXYZ>::Ptr cloudSOR(new pcl::PointCloud<pcl::PointXYZ>());
+  pcl::PointCloud<pcl::PointXYZ>::Ptr cloudCentered(new pcl::PointCloud<pcl::PointXYZ>());
+  pcl::PointCloud<pcl::PointXYZ>::Ptr cloudTransform(new pcl::PointCloud<pcl::PointXYZ>());
+
+  // feature instances
+  pcl::PointXYZ cloudMean;
+  Eigen::Vector4f centroid;
+  std::vector<pcl::PointIndices> clusters;
+  pcl::StatisticalOutlierRemoval<pcl::PointXYZ> sor(true);
+
+  // Parameter setting for filtering
+  sor.setMeanK(100);
+  sor.setKeepOrganized(true);
+  sor.setStddevMulThresh(0.7);
 
   // wait for key press
   // std::cin >> c;
+
+  // pcl point cloud
+  cv::namedWindow("Depth",CV_WINDOW_AUTOSIZE);
+  pcl::visualization::CloudViewer viewer("Feature Extraction");
 
   // ros time init
   ros::Time::init();
@@ -127,6 +151,7 @@ int main(int argc, char **argv)
   ros::Rate rate(30);
   ros::Duration tPass;
   ros::Time now, begin;
+  std::vector<int> indices;
   rosbag::View::iterator iter = view.begin();
 
   while(iter != view.end())
@@ -156,6 +181,23 @@ int main(int argc, char **argv)
       ++iter;
     }
 
+    sor.setInputCloud(cloud);
+    sor.filter(*cloudSOR);
+
+    pcl::transformPointCloud(*cloudSOR, *cloudTransform, transform);
+
+    // Center point cloud
+    pcl::compute3DCentroid(*cloudTransform, centroid);
+    pcl::demeanPointCloud(*cloudTransform, centroid, *cloudCentered);
+
+    for (int i = 0; i < cloudCentered->size(); i++)
+    {
+      if (!pcl_isfinite (cloudCentered->points[i].x) || !pcl_isfinite (cloudCentered->points[i].y) || !pcl_isfinite (cloudCentered->points[i].z))
+      {
+        cloudCentered->points[i].x = 0.0; cloudCentered->points[i].y = 0.0; cloudCentered->points[i].z = 0.0;
+      }
+    }
+
     for(int r = 0; r < color.rows; ++r)
     {
       const uint8_t *itMask = mask.ptr<uint8_t>(r);
@@ -171,14 +213,18 @@ int main(int argc, char **argv)
     }
     maskDat << std::endl; colorDat << std::endl; depthDat << std::endl;
 
-    for (int i = 0; i < cloud->size()-1; i++)
-      cloudDat << cloud->points[i].x << "," << cloud->points[i].y << "," << cloud->points[i].z << ",";
-    cloudDat << cloud->points[cloud->size()-1].x << "," << cloud->points[cloud->size()-1].y << "," << cloud->points[cloud->size()-1].z << std::endl;
+    for (int i = 0; i < cloudCentered->size()-1; i++)
+    {
+      cloudDat << cloudCentered->points[i].x << "," << cloudCentered->points[i].y << "," << cloudCentered->points[i].z << ",";
+    }
+    cloudDat << cloudCentered->points[cloudCentered->size()-1].x << "," << cloudCentered->points[cloudCentered->size()-1].y << "," << cloudCentered->points[cloudCentered->size()-1].z << std::endl;
 
     std::cout << "Frame: " << frame << ", Time: " << tPass.toSec() << std::endl;
+    std::cout << "Cloud Centered: " << cloudCentered->size() << std::endl;
     frame++;
 
-    cv::imshow("Color", color);
+    viewer.showCloud(cloudCentered);
+    cv::imshow("Depth", depth);
     rate.sleep();
   }
 
