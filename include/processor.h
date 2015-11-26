@@ -6,8 +6,8 @@
 // TODO:
 
 #pragma once
-#ifndef __TRACKER_H__
-#define __TRACKER_H__
+#ifndef __PROCESSOR_H__
+#define __PROCESSOR_H__
 
 // CPP headers
 #include <cmath>
@@ -45,6 +45,7 @@
 #define SMIN 30
 #define VMIN 30
 #define VMAX 254
+#define WINDOWSIZE 250
 
 // Tracker class
 class Processor
@@ -76,13 +77,14 @@ class Processor
     // opencv parameters
     int m_filterLength;
     cv::Point m_origin;
-    bool m_selectObject;
     int m_width, m_height;
     cv::VideoWriter m_writer;
     std::vector<cv::Rect> m_windows;
-    cv::Rect m_selection, m_window, m_rawWindow;
+    cv::Rect m_featWindow, m_window;
+    cv::Rect m_selection, m_rawWindow;
+    bool m_selectObject, m_featureMode;
     cv::Mat m_lookupY, m_lookupX, m_cameraMatrix;
-    cv::Mat m_color, m_depth, m_hist, m_output, m_backproj;
+    cv::Mat m_color, m_depth, m_hist, m_output, m_backproj, m_points;
 
     // pcl initialization
     pcl::PointCloud<pcl::PointXYZ>::Ptr m_cloud;
@@ -107,6 +109,9 @@ class Processor
 
     // function to obtain cv::Mat from sensor_msgs
     void readImage(sensor_msgs::Image::ConstPtr msgImage, cv::Mat &image);
+
+    // function to downscale image
+    void dispDepth(const cv::Mat &in, cv::Mat &out, const float maxValue);
 
     // mouse click callback function for T-shirt color calibration
     static void onMouse(int event, int x, int y, int flags, void* param);
