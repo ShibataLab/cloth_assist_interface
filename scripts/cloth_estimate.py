@@ -39,8 +39,8 @@ from sensor_msgs.msg import PointCloud2
 # markerViz = GPy.plotting.matplot_dep.visualize.vector_show(clothModel.Y1.Y[0,:])
 
 # load the trained cloth model
-markerModel = pickle.load(open("markerModel.p","rb"))
-topCoordModel = pickle.load(open("topCoordModel.p","rb"))
+markerModel = pickle.load(open("CircleMarkerHumanModel.p","rb"))
+topCoordModel = pickle.load(open("TopCoordHumanModel.p","rb"))
 
 # creating the callback function
 class ClothEstimator():
@@ -119,7 +119,7 @@ class ClothEstimator():
 
 def main():
 
-    ce = ClothEstimator(filtLength=9)
+    ce = ClothEstimator(nMarkers=20,filtLength=3)
 
 # main function
 if __name__ == '__main__':
