@@ -213,14 +213,17 @@ int main(int argc, char **argv)
     }
     maskDat << std::endl; colorDat << std::endl; depthDat << std::endl;
 
+    if (cloudCentered->size() != 62500)
+      std::cout << "Error!: " << cloudCentered->size() << std::endl;
+
     for (int i = 0; i < cloudCentered->size()-1; i++)
     {
       cloudDat << cloudCentered->points[i].x << "," << cloudCentered->points[i].y << "," << cloudCentered->points[i].z << ",";
     }
     cloudDat << cloudCentered->points[cloudCentered->size()-1].x << "," << cloudCentered->points[cloudCentered->size()-1].y << "," << cloudCentered->points[cloudCentered->size()-1].z << std::endl;
 
-    std::cout << "Frame: " << frame << ", Time: " << tPass.toSec() << std::endl;
-    std::cout << "Cloud Centered: " << cloudCentered->size() << std::endl;
+    // std::cout << "Frame: " << frame << ", Time: " << tPass.toSec() << std::endl;
+    // std::cout << "Cloud Centered: " << cloudCentered->size() << std::endl;
     frame++;
 
     viewer.showCloud(cloudCentered);
@@ -234,6 +237,8 @@ int main(int argc, char **argv)
   depthDat.close();
   cloudDat.close();
 
+  std::cout << "Done!" << std::endl;
+  
   // clean shutdown
   ros::shutdown();
   return 0;
