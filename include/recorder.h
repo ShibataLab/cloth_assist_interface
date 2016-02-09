@@ -14,6 +14,7 @@
 #include <chrono>
 #include <string>
 #include <vector>
+#include <cstdlib>
 #include <stdio.h>
 #include <sstream>
 #include <stdlib.h>
@@ -49,6 +50,7 @@ class Recorder
 
     // flags for logic
     size_t frame;
+    int recordMode;
     const size_t queueSize;
 
     // variable for the rosbag
@@ -88,7 +90,7 @@ class Recorder
   public:
     // class constructor
     // takes 3 input arguments topic color, topic depth and topic type
-    Recorder(const std::string &topicColor, const std::string &topicDepth);
+    Recorder(const std::string &topicColor, const std::string &topicDepth, const int recordMode);
 
     // class destructor
     ~Recorder();
