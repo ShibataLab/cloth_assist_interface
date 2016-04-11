@@ -57,6 +57,8 @@ Processor::Processor(std::string fileName, std::string topicColor, std::string t
     m_width = 512;
   }
 
+  m_fileName = fileName;
+
   // trackMode
   if (m_trackMode)
   {
@@ -108,7 +110,12 @@ void Processor::run()
   double currentTime, timeTrack, startTime;
 
   // create pcl cloud viewer
-  pcl::visualization::CloudViewer viewer("Cloth Tracker");
+  boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer ("Cloth"));
+
+  //0.0045045,4.5045/-0.154331,0.183618,1.57894/-0.0184725,0.133469,0.0424829/-0.0836919,-0.996175,0.0251144/0.523599/654,600/662,351
+  //0.0025166,2.5166/-0.0184725,0.133469,0.0424829/-0.217383,0.206892,2.29201/-0.0836919,-0.996175,0.0251144/0.523599/600,600/65,52
+  viewer->setCameraPosition(-0.0184725,0.133469,0.0424829,-0.217383,0.206892,2.29201,-0.0836919,-0.996175,0.0251144);
+  viewer->setSize(600,600);
 
   // ros time instance
   m_time = (*iter).getTime();
@@ -169,10 +176,16 @@ void Processor::run()
     if (m_trackMode)
       m_tracks << m_frame << "," << timeTrack << std::endl;
 
-    if (!m_featureMode)
+    if (m_featureMode)
     {
       if (m_videoMode)
+      {
+        char tempName[200];
+        sprintf(tempName, "cloud%03d.png", m_frame);
+        // imwrite(tempName, m_output);
         m_writer.write(m_output);
+        // viewer->saveScreenshot(tempName);
+      }
 
       if (m_cloudMode)
         m_cloudBag.write(topicCloud, m_time, *m_cloud);
@@ -206,7 +219,11 @@ void Processor::run()
     else
       cv::imshow("Depth", m_depth);
 
-    viewer.showCloud(m_cloud);
+    if (m_frame == 1)
+      viewer->addPointCloud(m_cloud,"cloth");
+    else
+      viewer->updatePointCloud(m_cloud,"cloth");
+    viewer->spinOnce(33);
     cv::imshow("Output", m_output);
     cv::imshow("Backproj", m_backproj);
     cv::waitKey(20);
@@ -421,16 +438,26 @@ void Processor::createROI(cv::Mat &roi)
   // copy color to output
   if (m_featureMode)
   {
-    tempColor1 = color(m_featWindow);
-    tempColor1.copyTo(tempColor2,pcMask);
-    cv::cvtColor(tempColor2, m_output, CV_BGR2GRAY);
-    m_backproj = backproj(m_featWindow);
+    // tempColor1 = color(m_featWindow);
+    // tempColor1.copyTo(tempColor2,pcMask);
+    // tempColor2.copyTo(m_output);
+    // m_backproj = backproj(m_featWindow);
+
+    // draw rectangles around highlighted areas
+    // cv::rectangle(color, window.tl(), window.br(), cv::Scalar(0, 0, 255), 2, CV_AA);
+    // cv::rectangle(color, m_window.tl(), m_window.br(), cv::Scalar(0, 255, 0), 2, CV_AA);
+    cv::rectangle(color, m_featWindow.tl(), m_featWindow.br(), cv::Scalar(255, 255, 255), 2, CV_AA);
+    cv::rectangle(depth, m_featWindow.tl(), m_featWindow.br(), cv::Scalar(65000, 65000, 65000), 2, CV_AA);
+
+    depth.copyTo(m_depth);
+    color.copyTo(m_output);
+    backproj.copyTo(m_backproj);
   }
   else
   {
     // draw rectangles around highlighted areas
-    cv::rectangle(color, window.tl(), window.br(), cv::Scalar(0, 0, 255), 2, CV_AA);
-    cv::rectangle(color, m_window.tl(), m_window.br(), cv::Scalar(0, 255, 0), 2, CV_AA);
+    //cv::rectangle(color, window.tl(), window.br(), cv::Scalar(0, 0, 255), 2, CV_AA);
+    //cv::rectangle(color, m_window.tl(), m_window.br(), cv::Scalar(0, 255, 0), 2, CV_AA);
     cv::rectangle(color, m_featWindow.tl(), m_featWindow.br(), cv::Scalar(255, 255, 255), 2, CV_AA);
     cv::rectangle(depth, m_featWindow.tl(), m_featWindow.br(), cv::Scalar(65000, 65000, 65000), 2, CV_AA);
 
@@ -469,7 +496,7 @@ void Processor::createCloud(cv::Mat &roi)
   }
   else
   {
-    xOffset = m_window.x; yOffset = m_window.y;    
+    xOffset = m_window.x; yOffset = m_window.y;
   }
 
   // parallel processing of pixel values

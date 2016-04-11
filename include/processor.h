@@ -75,6 +75,7 @@ class Processor
     sensor_msgs::CameraInfo::ConstPtr m_cameraInfo;
 
     // opencv parameters
+    std::string m_fileName;
     int m_filterLength;
     cv::Point m_origin;
     int m_width, m_height;

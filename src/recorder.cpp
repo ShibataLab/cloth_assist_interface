@@ -10,8 +10,8 @@
 #include <recorder.h>
 
 // class constructor
-Recorder::Recorder(const std::string &topicColor, const std::string &topicDepth)
-    : topicColor(topicColor), topicDepth(topicDepth), frame(0), queueSize(5), nh("~"), spinner(0), it(nh)
+Recorder::Recorder(const std::string &topicColor, const std::string &topicDepth, const int recordMode)
+    : topicColor(topicColor), topicDepth(topicDepth), frame(0), queueSize(5), nh("~"), spinner(0), it(nh), recordMode(recordMode)
 {
 }
 
@@ -24,100 +24,134 @@ Recorder::~Recorder()
 void Recorder::run()
 {
   // zmq variables
+  char flag;
   std::string Message;
 
   // start the kinect depth sensor
   start();
 
-  // initialize zmq variables
-  zmq::context_t context(1);
-  
-  // initialize socket with the pair option
-  zmq::socket_t kinectSocket(context, ZMQ_PAIR);
+  if (recordMode == 0)
+  {
+    // fileName set to default in basic record mode
+    // to make my life easier
+    fileName = "default";
 
-  // create kinect server to synchronize with
-  kinectSocket.bind("tcp://*:5555");
-  std::cout << "[ZMQ] Created kinect server" << std::endl;
+    // open a new bag file
+    char bagName[200];
+    sprintf(bagName, "%s.bag", fileName.c_str());
+    bag.open(bagName, rosbag::bagmode::Write);
+    std::cout << "[ROSBAG] Opening ROS bag" << std::endl;
 
-  while (1)
-  	{
-      // wait for message from clinet
-  		zmq::message_t request;
-  		kinectSocket.recv(&request);
-  		Message = std::string(static_cast<char *>(request.data()), request.size());
+    std::cout << "Start recording? Y/N" << std::endl;
+    std::cin >> flag;
 
-      // stop server and clean exit if Stop message is received
-      if (Message == "StopServer")
-  		{
-  			std::cout << "[ZMQ] Received Stop Server" << std::endl;
-  			break;
-  		}
+    // start the recording
+    spinner.start();
 
-      // initialize variables for recording if New message is received
-      else if (Message == "NewTrial")
-  		{
-  			std::cout << "[ZMQ] Received NewTrial" << std::endl;
+    std::cout << "Stop recording? Y/N" << std::endl;
+    std::cin >> flag;
 
-  			// send ready reply
-  			zmq::message_t reply(5);
-  			std::memcpy((void *)reply.data(), "Ready", 5);
-  			kinectSocket.send(reply);
-  			std::cout << "[ZMQ] Sent Ready" << std::endl;
+    // stop the spinner
+    spinner.stop();
 
-  			// get kinect filename
-  			zmq::message_t recordName;
-  			kinectSocket.recv(&recordName);
-  			fileName = std::string(static_cast<char *>(recordName.data()), recordName.size());
-  			std::cout << "[ZMQ] Received filename" << std::endl;
+    // close rosbag
+    bag.close();
+    std::cout << "[ROSBAG] Saving ROS Bag" << std::endl;
+  }
+  else if (recordMode == 1)
+  {
+    // initialize zmq variables
+    zmq::context_t context(1);
 
-        // open a new bag file
-        char bagName[200];
-        sprintf(bagName, "%s.bag", fileName.c_str());
-        bag.open(bagName, rosbag::bagmode::Write);
-        std::cout << "[ROSBAG] Opening ROS bag" << std::endl;
+    // initialize socket with the pair option
+    zmq::socket_t kinectSocket(context, ZMQ_PAIR);
 
-        // wait for start recording message from client
-        zmq::message_t startRequest;
-  			kinectSocket.recv(&startRequest);
-  			Message = std::string(static_cast<char *>(startRequest.data()), startRequest.size());
-        if (Message == "StartRecording")
-        {
-          std::cout << "[ZMQ] Received StartRecording" << std::endl;
+    // create kinect server to synchronize with
+    kinectSocket.bind("tcp://*:5555");
+    std::cout << "[ZMQ] Created kinect server" << std::endl;
 
-          // start the recording
-          spinner.start();
-        }
-  			else
-        {
-          std::cout << "[ZMQ] Invalid message" << std::endl;
-          continue;
-        }
+    while (1)
+    	{
+        // wait for message from clinet
+    		zmq::message_t request;
+    		kinectSocket.recv(&request);
+    		Message = std::string(static_cast<char *>(request.data()), request.size());
 
-        // wait for stop recording message from client
-    		zmq::message_t stopRequest;
-    		kinectSocket.recv(&stopRequest);
-    		Message = std::string(static_cast<char *>(stopRequest.data()), stopRequest.size());
-        if (Message == "StopRecording")
-        {
-          std::cout << "[ZMQ] Received StopRecording" << std::endl;
-        }
-  			else
-        {
-          std::cout << "[ZMQ] Message Received: " << Message << std::endl;
-          std::cout << "[ZMQ] Invalid message" << std::endl;
-        }
+        // stop server and clean exit if Stop message is received
+        if (Message == "StopServer")
+    		{
+    			std::cout << "[ZMQ] Received Stop Server" << std::endl;
+    			break;
+    		}
 
-        // stop the spinner
-        spinner.stop();
+        // initialize variables for recording if New message is received
+        else if (Message == "NewTrial")
+    		{
+    			std::cout << "[ZMQ] Received NewTrial" << std::endl;
 
-        // close rosbag
-        bag.close();
-        std::cout << "[ROSBAG] Saving ROS Bag" << std::endl;
-  		}
-  	}
+    			// send ready reply
+    			zmq::message_t reply(5);
+    			std::memcpy((void *)reply.data(), "Ready", 5);
+    			kinectSocket.send(reply);
+    			std::cout << "[ZMQ] Sent Ready" << std::endl;
 
-  // clean shutdown
-  kinectSocket.close();
+    			// get kinect filename
+    			zmq::message_t recordName;
+    			kinectSocket.recv(&recordName);
+    			fileName = std::string(static_cast<char *>(recordName.data()), recordName.size());
+    			std::cout << "[ZMQ] Received filename" << std::endl;
+
+          // open a new bag file
+          char bagName[200];
+          sprintf(bagName, "%s.bag", fileName.c_str());
+          bag.open(bagName, rosbag::bagmode::Write);
+          std::cout << "[ROSBAG] Opening ROS bag" << std::endl;
+
+          // wait for start recording message from client
+          zmq::message_t startRequest;
+    			kinectSocket.recv(&startRequest);
+    			Message = std::string(static_cast<char *>(startRequest.data()), startRequest.size());
+          if (Message == "StartRecording")
+          {
+            std::cout << "[ZMQ] Received StartRecording" << std::endl;
+
+            // start the recording
+            spinner.start();
+          }
+    			else
+          {
+            std::cout << "[ZMQ] Invalid message" << std::endl;
+            continue;
+          }
+
+          // wait for stop recording message from client
+      		zmq::message_t stopRequest;
+      		kinectSocket.recv(&stopRequest);
+      		Message = std::string(static_cast<char *>(stopRequest.data()), stopRequest.size());
+          if (Message == "StopRecording")
+          {
+            std::cout << "[ZMQ] Received StopRecording" << std::endl;
+          }
+    			else
+          {
+            std::cout << "[ZMQ] Message Received: " << Message << std::endl;
+            std::cout << "[ZMQ] Invalid message" << std::endl;
+          }
+
+          // stop the spinner
+          spinner.stop();
+
+          // close rosbag
+          bag.close();
+          std::cout << "[ROSBAG] Saving ROS Bag" << std::endl;
+    		}
+    	}
+
+    // clean shutdown
+    kinectSocket.close();
+  }
+
+  // stop function
   stop();
 }
 
