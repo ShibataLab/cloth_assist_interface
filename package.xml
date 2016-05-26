@@ -2,13 +2,13 @@
 <package>
   <name>cloth_assist_interface</name>
   <version>0.0.0</version>
-  <description>This package contains code to interface Kinect V2, Baxter and Cortex Motion Capture System</description>
+  <description>This package contains code to interface Kinect V2, Baxter and Cortex Motion Capture System for performing Clothing Assistance experiments.</description>
 
   <maintainer email="buntyke@gmail.com">Nishanth Koganti</maintainer>
 
   <license>MIT</license>
 
-  <url type="website">https://github.com/ShibataLab/cloth_assist_interface.git</url>
+  <url type="website">https://github.com/buntyke/cloth_assist_interface.git</url>
 
   <author email="buntyke@gmail.com">Nishanth Koganti</author>
 
