@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(Interface)
+project(cloth_assist_interface)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBT_USE_DOUBLE_PRECISION -Wall")
 # Unused warnings

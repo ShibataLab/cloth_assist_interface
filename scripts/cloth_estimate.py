@@ -21,12 +21,12 @@ import cPickle as pickle
 from scipy import signal
 from std_msgs.msg import Header
 import matplotlib.pyplot as plt
-from Interface.msg import TopCoord
 from geometry_msgs.msg import Point
 from rospy.numpy_msg import numpy_msg
 from rospy_tutorials.msg import Floats
 import sensor_msgs.point_cloud2 as pc2
 from sensor_msgs.msg import PointCloud2
+from cloth_assist_interface.msg import TopCoord
 
 # parameters for the cloth modeling
 # nPlotPoints = 50
