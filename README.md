@@ -1,6 +1,6 @@
-# Interface
+# cloth_assist_interface
 
-This repository contains a ROS package to work with Baxter research robot, Kinect V2 and Motion Analysis Hawk motion capture system. This package is being used to collect various datasets for publications made by ShibataLab.
+This repository contains a ROS package to work with Baxter research robot, Kinect V2 and Motion Analysis Hawk motion capture system. This package is being used to collect various datasets for publications related to clothing assistance.
 
 ## Dependencies
 This package requires several dependencies to run successfully:
@@ -29,7 +29,7 @@ The installation instructions are as followed:
   ```
   sudo apt-get install ros-indigo-ar-track-alvar ros-indigo-ar-track-alvar-msgs
   ```
-6. Download the Interface ROS package in the same ROS workspace as above and compile it:
+6. Download the cloth_assist_interface ROS package in the same ROS workspace as above and compile it:
   ```
   cd ~/ros_ws/src
   git clone https://github.com/ShibataLab/Interface.git
@@ -46,5 +46,13 @@ The installation instructions are as followed:
 
 ## Usage
 
+### Utility programs
+
+* CPP files to interface with Kinect V2
+* CPP files to interface with Motion Capture system
+* Python files to work with Baxter robot
+* CPP and Python codes for simultaneous data recording
+* Launch files for AR marker tracking
+* RQt and rviz config files for GUI and Data visualization
 
 ## Troubleshooting
