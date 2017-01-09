@@ -21,22 +21,26 @@ This package requires several dependencies to run successfully:
 ## Install
 The installation instructions are as followed:
 
-1. First install Ubuntu 14.04 on the Desktop PC and setup ROS indigo following steps 1 and 2 in this [page](http://sdk.rethinkrobotics.com/wiki/Workstation_Setup).
-2. Create a new ROS wokspace and install the necessary Baxter SDK software following steps 3 to 7 in this [page](http://sdk.rethinkrobotics.com/wiki/Workstation_Setup).
-3. Install libfreenect and the necessary graphics card drivers by following the instructions in this [page](https://github.com/code-iai/iai_kinect2).
-4. Download the iai_kinect2 ROS package in the same workspace as Baxter SDK and install it by following the instructions in this [page](https://github.com/code-iai/iai_kinect2).
-5. Install ar_track_alvar by opening a terminal and typing the following command:
+* First install Ubuntu 14.04 on the Desktop PC and setup ROS indigo following steps 1 and 2 in this [page](http://sdk.rethinkrobotics.com/wiki/Workstation_Setup).
+* Create a new ROS wokspace and install the necessary Baxter SDK software following steps 3 to 7 in this [page](http://sdk.rethinkrobotics.com/wiki/Workstation_Setup).
+* Install libfreenect and the necessary graphics card drivers by following the instructions in this [page](https://github.com/code-iai/iai_kinect2).
+* Download the iai_kinect2 ROS package in the same workspace as Baxter SDK and install it by following the instructions in this [page](https://github.com/code-iai/iai_kinect2).
+* Install ar_track_alvar by opening a terminal and typing the following command:
   ```
   sudo apt-get install ros-indigo-ar-track-alvar ros-indigo-ar-track-alvar-msgs
   ```
-6. Download the cloth_assist_interface ROS package in the same ROS workspace as above and compile it:
+* Install zeromq library by opening a terminal and typing the following command:
+  ```
+  sudo apt-get install libzmq3 libzmq3-dev libzmqpp3 libzmqpp3-dev
+  ```
+* Download the cloth_assist_interface ROS package in the same ROS workspace as above and compile it:
   ```
   cd ~/ros_ws/src
   git clone https://github.com/ShibataLab/Interface.git
   cd ..
   catkin_make
   ```
-7. If catkin make exits without any errors, then you can start using the programs by running:
+* If catkin make exits without any errors, then you can start using the programs by running:
   ```
   source ~/ros_ws/devel/setup.bash
   ```
