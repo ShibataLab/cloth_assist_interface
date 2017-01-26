@@ -1,0 +1,14 @@
+<launch>
+    <!-- define args -->
+    <arg name="playFile" default="teachJA">
+    <arg name="recordFile"  default="record" />
+
+    <!-- kinect bag recorder -->
+    <node name="kinect_recorder" pkg="cloth_assist_interface" type="kinect_recorder" args="sd"/>
+
+    <!-- baxter recorder -->
+    <node name="baxter_recorder" pkg="cloth_assist_interface" type="record.py" args="-f $(arg recordFile) -m 1">
+
+    <!-- baxter player -->
+    <node name="baxter_player" pkg="cloth_assist_interface" type="play.py" args="-f $(arg playFile)">
+</launch>
