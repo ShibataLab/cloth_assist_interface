@@ -31,14 +31,17 @@ The installation instructions are as followed:
   ```
 * Install zeromq library by opening a terminal and typing the following command:
   ```
-  sudo apt-get install libzmq3 libzmq3-dev libzmqpp3 libzmqpp3-dev
+  sudo apt-get install libzmq3 libzmq3-dev libzmqpp3 libzmqpp-dev
   ```
 * Download the cloth_assist_interface ROS package in the same ROS workspace as above and compile it:
   ```
   cd ~/ros_ws/src
-  git clone https://github.com/ShibataLab/Interface.git
-  cd ..
-  catkin_make
+  ```
+  ```
+  git clone https://github.com/ShibataLabPrivate/cloth_assist_interface.git
+  ```
+  ```
+  cd ..; catkin_make
   ```
 * If catkin make exits without any errors, then you can start using the programs by running:
   ```
