@@ -17,7 +17,7 @@
 #include <zmq.hpp>
 
 // preprocessor directives
-#define MOCAPIP "tcp://192.168.0.3:5555"
+// #define MOCAPIP "tcp://192.168.0.3:5555"
 #define KINECTIP "tcp://localhost:5555"
 #define BAXTERIP "tcp://localhost:5565"
 
@@ -33,13 +33,13 @@ int main(int argc, char** argv)
 
 	//  prepare context and socket
 	context_t context(1);
-	socket_t mocapSocket(context, ZMQ_PAIR);
+	// socket_t mocapSocket(context, ZMQ_PAIR);
 	socket_t kinectSocket(context, ZMQ_PAIR);
   socket_t baxterSocket(context, ZMQ_PAIR);
 
 	// connect to the servers
-	mocapSocket.connect(MOCAPIP);
-	cout << "[ZMQ Mocap] Connected to server" << endl;
+	// mocapSocket.connect(MOCAPIP);
+	// cout << "[ZMQ Mocap] Connected to server" << endl;
 
 	kinectSocket.connect(KINECTIP);
 	cout << "[ZMQ Kinect] Connected to server" << endl;
@@ -57,10 +57,10 @@ int main(int argc, char** argv)
 		if (c == 'N' || c == 'n')
 		{
 			// stop both kinect and mocap servers
-			message_t stopServerMocap(10);
-			memcpy((void *)stopServerMocap.data(), "StopServer", 10);
-			mocapSocket.send(stopServerMocap);
-			cout << "[ZMQ Mocap] Sent StopServer"  << endl;
+			// message_t stopServerMocap(10);
+			// memcpy((void *)stopServerMocap.data(), "StopServer", 10);
+			// mocapSocket.send(stopServerMocap);
+			// cout << "[ZMQ Mocap] Sent StopServer"  << endl;
 			message_t stopServerKinect(10);
 			memcpy((void *)stopServerKinect.data(), "StopServer", 10);
 			kinectSocket.send(stopServerKinect);
@@ -75,10 +75,10 @@ int main(int argc, char** argv)
 		else
 		{
 			// start new trial
-			message_t newTrialMocap(8);
-			memcpy((void *)newTrialMocap.data(), "NewTrial", 8);
-			mocapSocket.send(newTrialMocap);
-			cout << "[ZMQ Mocap] Sent NewTrial" << endl;
+			// message_t newTrialMocap(8);
+			// memcpy((void *)newTrialMocap.data(), "NewTrial", 8);
+			// mocapSocket.send(newTrialMocap);
+			// cout << "[ZMQ Mocap] Sent NewTrial" << endl;
       message_t newTrialKinect(8);
 			memcpy((void *)newTrialKinect.data(), "NewTrial", 8);
 			kinectSocket.send(newTrialKinect);
@@ -90,20 +90,20 @@ int main(int argc, char** argv)
 
 			// wait for replies
 			message_t mocapReply, kinectReply, baxterReply;
-			mocapSocket.recv(&mocapReply);
+			// mocapSocket.recv(&mocapReply);
 			kinectSocket.recv(&kinectReply);
       baxterSocket.recv(&baxterReply);
 
 			// check for ready message
-			Message = string(static_cast<char *>(mocapReply.data()), mocapReply.size());
-			if (Message == "Ready")
-				cout << "[ZMQ Mocap] Received Ready" << endl;
-			else
-			{
-				// try again if we get invalid reply
-				cout << "[ZMQ Mocap] Invalid reply" << endl;
-				continue;
-			}
+			// Message = string(static_cast<char *>(mocapReply.data()), mocapReply.size());
+			// if (Message == "Ready")
+			// 	cout << "[ZMQ Mocap] Received Ready" << endl;
+			// else
+			// {
+			// 	// try again if we get invalid reply
+			// 	cout << "[ZMQ Mocap] Invalid reply" << endl;
+			// 	continue;
+			// }
 
 			// check for ready message
 			Message = string(static_cast<char *>(kinectReply.data()), kinectReply.size());
@@ -140,10 +140,10 @@ int main(int argc, char** argv)
 			cout << "Record Filename?" << endl;
 			cin >> Message;
 
-			message_t fileNameMocap(Message.length());
-			memcpy((void *)fileNameMocap.data(), Message.c_str(), Message.length());
-			mocapSocket.send(fileNameMocap);
-			cout << "[ZMQ Mocap] Sent filename" << endl;
+			// message_t fileNameMocap(Message.length());
+			// memcpy((void *)fileNameMocap.data(), Message.c_str(), Message.length());
+			// mocapSocket.send(fileNameMocap);
+			// cout << "[ZMQ Mocap] Sent filename" << endl;
 			message_t fileNameKinect(Message.length());
 			memcpy((void *)fileNameKinect.data(), Message.c_str(), Message.length());
 			kinectSocket.send(fileNameKinect);
@@ -158,13 +158,13 @@ int main(int argc, char** argv)
 			cin >> Message;
 
 			if (Message == "Y" || Message == "y")
-				sleep(15);
+				sleep(1);
 
 			// start recording request
-			message_t startRequestMocap(14);
-			memcpy((void *)startRequestMocap.data(), "StartRecording", 14);
-			mocapSocket.send(startRequestMocap);
-			cout << "[ZMQ Mocap] Sent StartRecording" << endl;
+			// message_t startRequestMocap(14);
+			// memcpy((void *)startRequestMocap.data(), "StartRecording", 14);
+			// mocapSocket.send(startRequestMocap);
+			// cout << "[ZMQ Mocap] Sent StartRecording" << endl;
 
 			// send kinect message
 			message_t startRequestKinect(14);
@@ -198,15 +198,15 @@ int main(int argc, char** argv)
 			kinectSocket.send(stopRequestKinect);
 			cout << "[ZMQ Kinect] Sent StopRecording" << endl;
 
-		  message_t stopRequestMocap(13);
-			memcpy((void *)stopRequestMocap.data(), "StopRecording", 13);
-			mocapSocket.send(stopRequestMocap);
-			cout << "[ZMQ Mocap] Sent StopRecording" << endl;
+		  // message_t stopRequestMocap(13);
+			// memcpy((void *)stopRequestMocap.data(), "StopRecording", 13);
+			// mocapSocket.send(stopRequestMocap);
+			// cout << "[ZMQ Mocap] Sent StopRecording" << endl;
 		}
 	}
 
 	// Safe exit
-	mocapSocket.close();
+	// mocapSocket.close();
 	kinectSocket.close();
   baxterSocket.close();
 	return 0;
