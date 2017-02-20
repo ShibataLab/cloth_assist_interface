@@ -99,8 +99,8 @@ def mapFile(filename):
         fRightRaw = np.linalg.norm([fR.x,fR.y,fR.z])
 
         # append to buffer and compute moving average
-        leftBuffer.append(forceLeft)
-        rightBuffer.append(forceRight)
+        leftBuffer.append(fLeftRaw)
+        rightBuffer.append(fRightRaw)
         if i >= bufferLength:
             leftBuffer.pop(0)
             rightBuffer.pop(0)
