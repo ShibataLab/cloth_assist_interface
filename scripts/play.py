@@ -3,11 +3,14 @@
 # play.py: python code to play baxter recorded trajectories
 # Requirements: baxter SDK installed and connection to baxter robot
 # Author: Nishanth Koganti
-# Date: 2015/08/24
+# Date: 2017/02/20
 # Source: baxter_examples/scripts/joint_position_file_playback.py
 
 # TODO:
 # 1) improve method to read different types of data such as via points and play trajectory
+
+# CHANGELOG:
+# 1) Improve code to detect force threshold
 
 # import external libraries
 import os
@@ -16,7 +19,11 @@ import zmq
 import time
 import rospy
 import argparse
+import numpy as np
 import baxter_interface
+
+forceThresh = 20
+bufferLength = 20
 
 # function to check if argument is float
 def tryFloat(x):
@@ -66,7 +73,6 @@ def mapFile(filename):
     # obtain names of columns
     keys = lines[0].rstrip().split(',')
 
-    i = 0
     print("[Baxter] Moving to Start Position")
 
     # move to start position and start time variable
@@ -75,12 +81,37 @@ def mapFile(filename):
     armRight.move_to_joint_positions(rcmdStart)
     startTime = rospy.get_time()
 
+    # create buffers for left and right force
+    leftBuffer = []
+    rightBuffer = []
+
     # play trajectory
+    i = 0
     for values in lines[1:]:
         i += 1
-
         sys.stdout.write("\r Record %d of %d " % (i, len(lines) - 1))
         sys.stdout.flush()
+
+        # obtain the end effector efforts
+        fL = armLeft.endpoint_effort()['force']
+        fR = armRight.endpoint_effort()['force']
+        fLeftRaw = np.linalg.norm([fL.x,fL.y,fL.z])
+        fRightRaw = np.linalg.norm([fR.x,fR.y,fR.z])
+
+        # append to buffer and compute moving average
+        leftBuffer.append(forceLeft)
+        rightBuffer.append(forceRight)
+        if i >= bufferLength:
+            leftBuffer.pop(0)
+            rightBuffer.pop(0)
+
+        forceLeft = np.asarray(leftBuffer).mean()
+        forceRight = np.asarray(rightBuffer).mean()
+
+        # check for force thresholds
+        if forceLeft > forceThresh or forceRight > forceThresh:
+            print "Error!! Force threshold exceed Left:%f, Right:%f" % (forceLeft, forceRight)
+            break
 
         # parse line for commands
         cmd, lcmd, rcmd, values = cleanLine(values, keys)
@@ -121,6 +152,7 @@ def main():
 
     # add arguments to parser
     parser.add_argument('-f', '--fileName', type = str, help = 'Output Joint Angle Filename')
+    parser.add_argument('-t', '--thresh', type = float, help = 'Force Threshold for fail detect', )
 
     # parsing arguments
     args = parser.parse_args(rospy.myargv()[1:])
@@ -146,6 +178,10 @@ def main():
     # enable Robot
     print("[Baxter] Enabling Robot")
     rs.enable()
+
+    # set the force threshold if given
+    if args.thresh:
+        forceThresh = args.thresh
 
     # if optional argument is given then only play mode is run
     if args.fileName:
