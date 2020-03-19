@@ -58,10 +58,10 @@ class JointRecorder(object):
             self._f1.write(','.join([j for j in self._joints_right]) + '\n')
 
             self._f2.write('time,')
-            self._f2.write(','.join([j for j in self._joints_left]) + ',')
-            self._f2.write(','.join([j for j in self._joints_right]) + ',')
-            self._f2.write(','.join([j for j in self._joints_left]) + ',')
-            self._f2.write(','.join([j for j in self._joints_right]) + '\n')
+            self._f2.write(','.join(['vel_%s' % j for j in self._joints_left]) + ',')
+            self._f2.write(','.join(['vel_%s' % j for j in self._joints_right]) + ',')
+            self._f2.write(','.join(['tor_%s' % j for j in self._joints_left]) + ',')
+            self._f2.write(','.join(['tor_%s' % j for j in self._joints_right]) + '\n')
 
             self._f3.write('time,')
             self._f3.write('poselinear_left_x,poselinear_left_y,poselinear_left_z,')
